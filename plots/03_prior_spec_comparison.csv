@@ -1,0 +1,3 @@
+"specification_code","specification","lambda_median","soc_median","sur_median","median_log_marginal_likelihood","recommendation"
+"mn_only","Minnesota only",0.179904860999517,NA,NA,-28464.0492609478,"Benchmark against preferred specification: Minnesota + SOC + SUR"
+"mn_soc_sur","Minnesota + SOC + SUR",0.211745986153641,0.6313439730494,0.410046407359291,-28410.7050468919,"Prefer Minnesota + SOC + SUR for the presentation: the data are estimated in levels, this matches the paper's workflow, and its median log marginal likelihood is not materially worse than Minnesota only."

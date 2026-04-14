@@ -343,6 +343,127 @@ plot_hyper_diagnostics <- function(hyper_draws, title, subtitle = NULL) {
     plot_annotation(title = title, subtitle = subtitle)
 }
 
+# Helper: SOC/SUR priors are designed for VARs estimated in levels.
+# We use a simple heuristic here to avoid forcing them onto data that look like
+# differences or growth rates by mistake.
+detect_level_var_setup <- function(data_mat) {
+  level_df <- data.frame(
+    variable = colnames(data_mat),
+    median = apply(data_mat, 2, median, na.rm = TRUE),
+    sd = apply(data_mat, 2, sd, na.rm = TRUE),
+    share_positive = apply(data_mat, 2, function(x) mean(x > 0, na.rm = TRUE)),
+    stringsAsFactors = FALSE
+  )
+
+  level_df$level_like <- with(
+    level_df,
+    share_positive > 0.8 | abs(median) > 0.25 * pmax(sd, 1e-8)
+  )
+
+  list(
+    applicable = all(level_df$level_like),
+    diagnostics = level_df,
+    message = if (all(level_df$level_like)) {
+      "Data look level-like, so SOC/SUR priors are admissible."
+    } else {
+      "Some series do not look level-like, so SOC/SUR priors will be skipped."
+    }
+  )
+}
+
+# Helper: posterior median for one hyperparameter if present
+hyper_median <- function(model, parameter) {
+  if (is.null(model$hyper) || !parameter %in% colnames(model$hyper)) {
+    return(NA_real_)
+  }
+  median(model$hyper[, parameter], na.rm = TRUE)
+}
+
+# Helper: median marginal likelihood if available from the BVAR fit
+median_log_ml <- function(model) {
+  if (is.null(model$ml)) {
+    return(NA_real_)
+  }
+  median(as.numeric(model$ml), na.rm = TRUE)
+}
+
+# Helper: concise prior-comparison summary row
+summarise_prior_spec <- function(model, specification_code, specification_label) {
+  data.frame(
+    specification_code = specification_code,
+    specification = specification_label,
+    lambda_median = hyper_median(model, "lambda"),
+    soc_median = hyper_median(model, "soc"),
+    sur_median = hyper_median(model, "sur"),
+    median_log_marginal_likelihood = median_log_ml(model),
+    recommendation = "",
+    stringsAsFactors = FALSE
+  )
+}
+
+# Helper: choose which full-sample prior specification to carry forward
+choose_preferred_prior <- function(comparison_df, use_soc_sur_model,
+                                   prior_spec_labels,
+                                   ml_threshold = 10) {
+  if (!use_soc_sur_model || !"mn_soc_sur" %in% comparison_df$specification_code) {
+    return(list(
+      code = "mn_only",
+      label = unname(prior_spec_labels["mn_only"]),
+      note = paste(
+        "Prefer Minnesota only for the main workflow because the",
+        "Minnesota + SOC + SUR specification was not estimated."
+      )
+    ))
+  }
+
+  ml_mn_only <- comparison_df$median_log_marginal_likelihood[
+    comparison_df$specification_code == "mn_only"
+  ]
+  ml_mn_soc_sur <- comparison_df$median_log_marginal_likelihood[
+    comparison_df$specification_code == "mn_soc_sur"
+  ]
+
+  if (is.finite(ml_mn_only) && is.finite(ml_mn_soc_sur) &&
+      ml_mn_only > ml_mn_soc_sur + ml_threshold) {
+    return(list(
+      code = "mn_only",
+      label = unname(prior_spec_labels["mn_only"]),
+      note = paste(
+        "Prefer Minnesota only for the presentation:",
+        "the data are level-like, but the benchmark has a materially higher",
+        "median log marginal likelihood than Minnesota + SOC + SUR."
+      )
+    ))
+  }
+
+  list(
+    code = "mn_soc_sur",
+    label = unname(prior_spec_labels["mn_soc_sur"]),
+    note = paste(
+      "Prefer Minnesota + SOC + SUR for the presentation:",
+      "the data are estimated in levels, this matches the paper's workflow,",
+      "and its median log marginal likelihood is not materially worse than",
+      "Minnesota only."
+    )
+  )
+}
+
+# Helper: compute the full-sample objects used repeatedly in the script
+compute_full_sample_outputs <- function(model, var_names) {
+  irf_obj <- irf(model, horizon = 20, conf_bands = c(0.05, 0.16))
+  fevd_obj <- fevd(irf_obj, conf_bands = c(0.16))
+  pred_obj <- predict(model, conf_bands = c(0.05, 0.16))
+  df_unc <- extract_fcast_df(pred_obj, var_names)
+  df_unc$scenario <- "Baseline"
+
+  list(
+    irf = irf_obj,
+    fevd = fevd_obj,
+    pred = pred_obj,
+    df_unc = df_unc
+  )
+}
+
 # Helper: build a +1 forecast-standard-deviation path for one variable
 build_plus_sd_path <- function(df_forecast, scenario_var, fallback_sd) {
   df_var <- df_forecast %>%
@@ -511,17 +632,51 @@ save_gg(p_ts, "01_timeseries.png", width = 12, height = 8)
 
 # 2. SHARED BVAR SETTINGS ------------------------------------
 
-# Minnesota prior: hierarchically estimated lambda, alpha, psi
-# lambda: overall tightness (shrinkage strength)
-# alpha:  lag-decay speed
-# psi:    per-variable variance scaling
+# BVAR prior workflow:
+# - Benchmark specification: Minnesota prior only
+# - Paper-aligned level-VAR specification: Minnesota + SOC + SUR
+# SOC and SUR are dummy-observation priors that are especially useful when the
+# VAR is estimated in levels. This script works with raw volatility-index
+# levels, so they are typically applicable; we still run a simple heuristic
+# check below and skip them with a warning if the data stop looking level-like.
+run_prior_comparison <- tolower(Sys.getenv("RUN_PRIOR_COMPARISON", unset = "true")) != "false"
+prior_spec_labels <- c(
+  mn_only = "Minnesota only",
+  mn_soc_sur = "Minnesota + SOC + SUR"
+)
+
+# Paper-style Minnesota prior baseline
 mn <- bv_minnesota(
   lambda = bv_lambda(mode = 0.2, sd = 0.4, min = 0.0001, max = 5),
   alpha = bv_alpha(mode = 2),
-  psi = bv_psi(scale = 0.004, shape = 0.004),
-  var = 1
+  var = 1e07
 )
-priors <- bv_priors(hyper = c("lambda", "alpha", "psi"), mn = mn)
+
+# Benchmark prior: Minnesota only, with hierarchical selection for lambda
+priors_mn_only <- bv_priors(hyper = "auto", mn = mn)
+
+level_var_check <- detect_level_var_setup(data_full)
+soc_sur_applicable <- level_var_check$applicable
+cat(level_var_check$message, "\n")
+if (!soc_sur_applicable) {
+  warning(
+    "SOC/SUR priors were requested, but the data do not look level-like. ",
+    "Proceeding with Minnesota-only where necessary."
+  )
+}
+
+soc <- NULL
+sur <- NULL
+priors_mn_soc_sur <- NULL
+use_soc_sur_model <- run_prior_comparison && soc_sur_applicable
+
+if (use_soc_sur_model) {
+  soc <- bv_soc(mode = 1, sd = 1, min = 1e-04, max = 50)
+  sur <- bv_sur(mode = 1, sd = 1, min = 1e-04, max = 50)
+  priors_mn_soc_sur <- bv_priors(hyper = "auto", mn = mn, soc = soc, sur = sur)
+} else if (run_prior_comparison && !soc_sur_applicable) {
+  cat("Skipping Minnesota + SOC + SUR because SOC/SUR are intended for level VARs.\n")
+}
 
 # IRF: Cholesky identification
 # Ordering: VIX -> V2X -> IVIUK -> VNKY -> VHSI -> INVIXN
@@ -551,19 +706,169 @@ if (!is.finite(n_draw) || !is.finite(n_burn) || n_draw <= n_burn) {
 
 # 3. FULL SAMPLE BVAR ----------------------------------------
 
-bvar_full <- bvar(
+# Benchmark full-sample model: Minnesota only
+bvar_full_mn_only <- bvar(
   data = data_full,
   lags = 5,
   n_draw = n_draw,
   n_burn = n_burn,
-  priors = priors,
+  priors = priors_mn_only,
   mh = mh,
   irf = irf_setup,
   fcast = fcast_setup,
   verbose = verbose_bvar
 )
 
-# --- 3.1 Convergence diagnostics (Slide 7) ---
+bvar_full_mn_soc_sur <- NULL
+if (use_soc_sur_model) {
+  bvar_full_mn_soc_sur <- bvar(
+    data = data_full,
+    lags = 5,
+    n_draw = n_draw,
+    n_burn = n_burn,
+    priors = priors_mn_soc_sur,
+    mh = mh,
+    irf = irf_setup,
+    fcast = fcast_setup,
+    verbose = verbose_bvar
+  )
+}
+
+full_sample_outputs_mn_only <- compute_full_sample_outputs(bvar_full_mn_only, var_names)
+full_sample_outputs_mn_soc_sur <- NULL
+if (use_soc_sur_model) {
+  full_sample_outputs_mn_soc_sur <- compute_full_sample_outputs(bvar_full_mn_soc_sur, var_names)
+}
+
+prior_comparison <- bind_rows(
+  summarise_prior_spec(bvar_full_mn_only, "mn_only", prior_spec_labels["mn_only"]),
+  if (use_soc_sur_model) {
+    summarise_prior_spec(bvar_full_mn_soc_sur, "mn_soc_sur", prior_spec_labels["mn_soc_sur"])
+  }
+)
+
+preferred_prior <- choose_preferred_prior(
+  comparison_df = prior_comparison,
+  use_soc_sur_model = use_soc_sur_model,
+  prior_spec_labels = prior_spec_labels
+)
+
+prior_comparison$recommendation <- ifelse(
+  prior_comparison$specification_code == preferred_prior$code,
+  preferred_prior$note,
+  paste("Benchmark against preferred specification:", preferred_prior$label)
+)
+
+write.csv(
+  prior_comparison,
+  file.path("plots", "03_prior_spec_comparison.csv"),
+  row.names = FALSE
+)
+cat("Prior comparison recommendation:", preferred_prior$note, "\n")
+
+if (preferred_prior$code == "mn_soc_sur") {
+  bvar_full <- bvar_full_mn_soc_sur
+  full_sample_outputs <- full_sample_outputs_mn_soc_sur
+  priors <- priors_mn_soc_sur
+} else {
+  bvar_full <- bvar_full_mn_only
+  full_sample_outputs <- full_sample_outputs_mn_only
+  priors <- priors_mn_only
+}
+
+full_prior_label <- preferred_prior$label
+irf_full <- full_sample_outputs$irf
+fevd_full <- full_sample_outputs$fevd
+pred_full <- full_sample_outputs$pred
+df_unc <- full_sample_outputs$df_unc
+
+# --- 3.1 Prior comparison figures (presentation-ready) ---
+p_irf_full_vix_mn_only <- plot_irf_facets(
+  irf_obj = full_sample_outputs_mn_only$irf,
+  var_names = var_names,
+  impulse_var = "VIX",
+  title = paste("IRF: Response to a 1 SD VIX Shock -", prior_spec_labels["mn_only"]),
+  subtitle = paste(
+    "Sample:", full_sample_label,
+    "| 68% and 90% posterior credible bands | Cholesky identification"
+  )
+)
+save_gg(p_irf_full_vix_mn_only, "03_irf_full_vix_mn_only.png", width = 12, height = 8)
+
+p_fevd_full_mn_only <- plot_fevd_facets(
+  fevd_obj = full_sample_outputs_mn_only$fevd,
+  var_names = var_names,
+  title = paste("FEVD -", prior_spec_labels["mn_only"]),
+  subtitle = paste("Sample:", full_sample_label)
+)
+save_gg(p_fevd_full_mn_only, "03_fevd_full_mn_only.png", width = 14, height = 10)
+
+p_fcast_unc_mn_only <- plot_forecast_facets(
+  full_sample_outputs_mn_only$df_unc,
+  title = paste("Unconditional Forecast -", prior_spec_labels["mn_only"]),
+  subtitle = paste(
+    "Sample:", full_sample_label,
+    "| 20 trading days ahead | 68% and 90% posterior credible bands"
+  ),
+  colours = c(Baseline = "#2C7FB8")
+)
+save_gg(p_fcast_unc_mn_only, "03_forecast_unconditional_mn_only.png", width = 12, height = 8)
+
+if (use_soc_sur_model) {
+  p_irf_full_vix_mn_soc_sur <- plot_irf_facets(
+    irf_obj = full_sample_outputs_mn_soc_sur$irf,
+    var_names = var_names,
+    impulse_var = "VIX",
+    title = paste("IRF: Response to a 1 SD VIX Shock -", prior_spec_labels["mn_soc_sur"]),
+    subtitle = paste(
+      "Sample:", full_sample_label,
+      "| 68% and 90% posterior credible bands | Cholesky identification"
+    )
+  )
+  save_gg(p_irf_full_vix_mn_soc_sur, "03_irf_full_vix_mn_soc_sur.png", width = 12, height = 8)
+
+  p_fevd_full_mn_soc_sur <- plot_fevd_facets(
+    fevd_obj = full_sample_outputs_mn_soc_sur$fevd,
+    var_names = var_names,
+    title = paste("FEVD -", prior_spec_labels["mn_soc_sur"]),
+    subtitle = paste("Sample:", full_sample_label)
+  )
+  save_gg(p_fevd_full_mn_soc_sur, "03_fevd_full_mn_soc_sur.png", width = 14, height = 10)
+
+  p_fcast_unc_mn_soc_sur <- plot_forecast_facets(
+    full_sample_outputs_mn_soc_sur$df_unc,
+    title = paste("Unconditional Forecast -", prior_spec_labels["mn_soc_sur"]),
+    subtitle = paste(
+      "Sample:", full_sample_label,
+      "| 20 trading days ahead | 68% and 90% posterior credible bands"
+    ),
+    colours = c(Baseline = "#2C7FB8")
+  )
+  save_gg(p_fcast_unc_mn_soc_sur, "03_forecast_unconditional_mn_soc_sur.png", width = 12, height = 8)
+
+  p_irf_prior_comparison <- (p_irf_full_vix_mn_only | p_irf_full_vix_mn_soc_sur) +
+    plot_annotation(
+      title = "Prior Comparison: VIX-Shock IRFs",
+      subtitle = preferred_prior$note
+    )
+  save_gg(p_irf_prior_comparison, "03_irf_full_vix_prior_comparison.png", width = 24, height = 8)
+
+  p_fevd_prior_comparison <- (p_fevd_full_mn_only | p_fevd_full_mn_soc_sur) +
+    plot_annotation(
+      title = "Prior Comparison: FEVD",
+      subtitle = preferred_prior$note
+    )
+  save_gg(p_fevd_prior_comparison, "03_fevd_full_prior_comparison.png", width = 24, height = 10)
+
+  p_fcast_prior_comparison <- (p_fcast_unc_mn_only | p_fcast_unc_mn_soc_sur) +
+    plot_annotation(
+      title = "Prior Comparison: Unconditional Forecast",
+      subtitle = preferred_prior$note
+    )
+  save_gg(p_fcast_prior_comparison, "03_forecast_unconditional_prior_comparison.png", width = 24, height = 8)
+}
+
+# --- 3.2 Convergence diagnostics for the preferred specification ---
 summary(bvar_full)
 
 save_base_plot("03_convergence_overview.png", {
@@ -571,7 +876,10 @@ save_base_plot("03_convergence_overview.png", {
   on.exit(par(old_par), add = TRUE)
   par(oma = c(0, 0, 3, 0))
   plot(bvar_full)
-  mtext("Convergence Diagnostics - Full Sample", outer = TRUE, cex = 1.3, font = 2)
+  mtext(
+    paste("Convergence Diagnostics - Full Sample (", full_prior_label, ")", sep = ""),
+    outer = TRUE, cex = 1.3, font = 2
+  )
 }, width = 14, height = 9)
 
 hyper_diag_full <- summarise_hyper_diagnostics(bvar_full$hyper)
@@ -585,11 +893,11 @@ write.csv(
 cat("\nHyperparameter diagnostics note:\n")
 if (all(hyper_diag_full$stationarity_flag == "OK") &&
     all(hyper_diag_full$mixing_flag == "OK")) {
-  cat("Geweke and ESS do not flag a major convergence problem in the saved draws.\n",
+  cat("Geweke and ESS do not flag a major convergence problem in the preferred specification's hyperparameters.\n",
       "If some densities look multimodal, that can still be economically meaningful rather than pathological.\n",
       sep = "")
 } else {
-  cat("At least one hyperparameter is flagged by Geweke or ESS.\n",
+  cat("At least one preferred-model hyperparameter is flagged by Geweke or ESS.\n",
       "If that persists in the full run, consider increasing n_burn and n_draw before finalising the slides.\n",
       sep = "")
 }
@@ -599,15 +907,15 @@ p_hyper_diag <- plot_hyper_diagnostics(
   title = "Hyperparameter Trace and Density Diagnostics - Full Sample",
   subtitle = paste(
     "Sample:", full_sample_label,
-    "| Geweke z outside +/-1.96 suggests non-stationarity.",
-    "Multimodality alone is not necessarily a problem."
+    "| Preferred prior:", full_prior_label,
+    "| Geweke z outside +/-1.96 suggests non-stationarity."
   )
 )
 
 print(p_hyper_diag)
 save_gg(p_hyper_diag, "03_hyperparameter_trace_density.png", width = 14, height = 12)
 
-# --- 3.2 Lambda posterior vs. prior (Slide 8) ---
+# --- 3.3 Lambda posterior vs. prior (Slide 8) ---
 lambda_draws <- bvar_full$hyper[, "lambda"]
 lambda_shape <- mn$lambda$coef$k
 lambda_scale <- mn$lambda$coef$theta
@@ -651,9 +959,7 @@ p_lambda <- ggplot(data.frame(x = lambda_draws), aes(x = x)) +
 print(p_lambda)
 save_gg(p_lambda, "03_lambda_prior_posterior.png")
 
-# --- 3.3 Impulse Response Functions: VIX shock (Slides 9-10) ---
-irf_full <- irf(bvar_full, horizon = 20, conf_bands = c(0.05, 0.16))
-
+# --- 3.4 Main full-sample outputs using the preferred specification ---
 p_irf_full_vix <- plot_irf_facets(
   irf_obj = irf_full,
   var_names = var_names,
@@ -661,6 +967,7 @@ p_irf_full_vix <- plot_irf_facets(
   title = "IRF: Response to a 1 SD VIX Shock - Full Sample",
   subtitle = paste(
     "Sample:", full_sample_label,
+    "| Preferred prior:", full_prior_label,
     "| 68% and 90% posterior credible bands | Cholesky identification"
   )
 )
@@ -668,30 +975,22 @@ p_irf_full_vix <- plot_irf_facets(
 print(p_irf_full_vix)
 save_gg(p_irf_full_vix, "03_irf_full_vix_shock.png", width = 12, height = 8)
 
-# --- 3.4 FEVD: Forecast Error Variance Decomposition - Full Sample ---
-fevd_full <- fevd(irf_full, conf_bands = c(0.16))
-
 p_fevd_full <- plot_fevd_facets(
   fevd_obj = fevd_full,
   var_names = var_names,
   title = "FEVD - Full Sample",
-  subtitle = paste("Sample:", full_sample_label)
+  subtitle = paste("Sample:", full_sample_label, "| Preferred prior:", full_prior_label)
 )
 
 print(p_fevd_full)
 save_gg(p_fevd_full, "03_fevd_full.png", width = 14, height = 10)
-
-# --- 3.5 Unconditional Forecast - 20 trading days ahead (Slide 16) ---
-pred_full <- predict(bvar_full, conf_bands = c(0.05, 0.16))
-
-df_unc <- extract_fcast_df(pred_full, var_names)
-df_unc$scenario <- "Baseline"
 
 p_fcast_unc <- plot_forecast_facets(
   df_unc,
   title = "Unconditional Forecast - Full Sample BVAR",
   subtitle = paste(
     "Sample:", full_sample_label,
+    "| Preferred prior:", full_prior_label,
     "| 20 trading days ahead | 68% and 90% posterior credible bands"
   ),
   colours = c(Baseline = "#2C7FB8")
@@ -699,6 +998,21 @@ p_fcast_unc <- plot_forecast_facets(
 
 print(p_fcast_unc)
 save_gg(p_fcast_unc, "03_forecast_unconditional.png", width = 12, height = 8)
+
+writeLines(
+  c(
+    "BVAR Modeling Notes",
+    "------------------",
+    "BVARverse is not needed here because the script works directly with core BVAR objects (`bvar`, `irf`, `fevd`, `predict`) and uses local ggplot helper functions to build presentation-ready figures and saved outputs.",
+    "",
+    "SOC and SUR are dummy-observation priors for level VARs. SOC shrinks the system toward persistent no-change dynamics, while SUR allows cointegration-friendly persistence by encouraging at least one unit root or movement around an unconditional mean.",
+    "",
+    paste("Level-VAR applicability check:", level_var_check$message),
+    paste("Preferred presentation specification:", full_prior_label),
+    preferred_prior$note
+  ),
+  con = file.path("plots", "07_modeling_notes.txt")
+)
 
 
 # 4. SUB-SAMPLE COMPARISON -----------------------------------

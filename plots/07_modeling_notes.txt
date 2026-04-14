@@ -1,0 +1,9 @@
+BVAR Modeling Notes
+------------------
+BVARverse is not needed here because the script works directly with core BVAR objects (`bvar`, `irf`, `fevd`, `predict`) and uses local ggplot helper functions to build presentation-ready figures and saved outputs.
+
+SOC and SUR are dummy-observation priors for level VARs. SOC shrinks the system toward persistent no-change dynamics, while SUR allows cointegration-friendly persistence by encouraging at least one unit root or movement around an unconditional mean.
+
+Level-VAR applicability check: Data look level-like, so SOC/SUR priors are admissible.
+Preferred presentation specification: Minnesota + SOC + SUR
+Prefer Minnesota + SOC + SUR for the presentation: the data are estimated in levels, this matches the paper's workflow, and its median log marginal likelihood is not materially worse than Minnesota only.
