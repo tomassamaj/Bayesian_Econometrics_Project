@@ -874,11 +874,11 @@ summary(bvar_full)
 save_base_plot("03_convergence_overview.png", {
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par), add = TRUE)
-  par(oma = c(0, 0, 3, 0))
+  par(oma = c(0, 0, 4, 0))
   plot(bvar_full)
   mtext(
     paste("Convergence Diagnostics - Full Sample (", full_prior_label, ")", sep = ""),
-    outer = TRUE, cex = 1.3, font = 2
+    outer = TRUE, line = 2.5, cex = 1.3, font = 2
   )
 }, width = 14, height = 9)
 
