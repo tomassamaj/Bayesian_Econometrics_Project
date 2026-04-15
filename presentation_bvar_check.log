@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (MiKTeX 24.4) (preloaded format=pdflatex 2025.1.29)  15 APR 2026 15:25
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (MiKTeX 24.4) (preloaded format=pdflatex 2025.1.29)  15 APR 2026 21:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1407,101 +1407,101 @@ LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <5> not available
 [8
 
 ]
-<presentation_assets/03_convergence_overview_mn_only.png, id=87, 2107.875pt x 1
-355.0625pt>
+<presentation_assets/03_convergence_overview_mn_only.png, id=87, 1011.78pt x 65
+0.43pt>
 File: presentation_assets/03_convergence_overview_mn_only.png Graphic file (typ
 e png)
 <use presentation_assets/03_convergence_overview_mn_only.png>
 Package pdftex.def Info: presentation_assets/03_convergence_overview_mn_only.pn
-g  used on input line 282.
-(pdftex.def)             Requested size: 214.08052pt x 137.6232pt.
+g  used on input line 289.
+(pdftex.def)             Requested size: 255.41454pt x 164.19505pt.
 
 
 [9
 
  <./presentation_assets/03_convergence_overview_mn_only.png>]
-<presentation_assets/03_irf_full_vix_shock.png, id=95, 867.24pt x 578.16pt>
+<presentation_assets/03_irf_full_vix_shock.png, id=94, 867.24pt x 578.16pt>
 File: presentation_assets/03_irf_full_vix_shock.png Graphic file (type png)
 <use presentation_assets/03_irf_full_vix_shock.png>
 Package pdftex.def Info: presentation_assets/03_irf_full_vix_shock.png  used on
- input line 300.
+ input line 307.
 (pdftex.def)             Requested size: 260.78273pt x 173.85515pt.
 
 
 [10
 
  <./presentation_assets/03_irf_full_vix_shock.png>]
-<presentation_assets/03_fevd_full.png, id=101, 1011.78pt x 722.7pt>
-File: presentation_assets/03_fevd_full.png Graphic file (type png)
-<use presentation_assets/03_fevd_full.png>
-Package pdftex.def Info: presentation_assets/03_fevd_full.png  used on input li
-ne 318.
+<presentation_assets/03_gfevd_full.png, id=100, 1011.78pt x 722.7pt>
+File: presentation_assets/03_gfevd_full.png Graphic file (type png)
+<use presentation_assets/03_gfevd_full.png>
+Package pdftex.def Info: presentation_assets/03_gfevd_full.png  used on input l
+ine 325.
 (pdftex.def)             Requested size: 243.40338pt x 173.85956pt.
 
 
 [11
 
- <./presentation_assets/03_fevd_full.png>]
-<presentation_assets/04_irf_calm_vs_crisis.png, id=107, 867.24pt x 1011.78pt>
+ <./presentation_assets/03_gfevd_full.png>]
+<presentation_assets/04_irf_calm_vs_crisis.png, id=106, 867.24pt x 1011.78pt>
 File: presentation_assets/04_irf_calm_vs_crisis.png Graphic file (type png)
 <use presentation_assets/04_irf_calm_vs_crisis.png>
 Package pdftex.def Info: presentation_assets/04_irf_calm_vs_crisis.png  used on
- input line 336.
+ input line 343.
 (pdftex.def)             Requested size: 144.87488pt x 169.02069pt.
 
 
 [12
 
  <./presentation_assets/04_irf_calm_vs_crisis.png>]
-<presentation_assets/04_fevd_calm.png, id=113, 1011.78pt x 722.7pt>
-File: presentation_assets/04_fevd_calm.png Graphic file (type png)
-<use presentation_assets/04_fevd_calm.png>
-Package pdftex.def Info: presentation_assets/04_fevd_calm.png  used on input li
-ne 360.
+<presentation_assets/04_gfevd_calm.png, id=112, 1011.78pt x 722.7pt>
+File: presentation_assets/04_gfevd_calm.png Graphic file (type png)
+<use presentation_assets/04_gfevd_calm.png>
+Package pdftex.def Info: presentation_assets/04_gfevd_calm.png  used on input l
+ine 367.
 (pdftex.def)             Requested size: 94.65344pt x 67.60959pt.
-<presentation_assets/04_fevd_crisis.png, id=114, 1011.78pt x 722.7pt>
-File: presentation_assets/04_fevd_crisis.png Graphic file (type png)
-<use presentation_assets/04_fevd_crisis.png>
-Package pdftex.def Info: presentation_assets/04_fevd_crisis.png  used on input 
-line 360.
+<presentation_assets/04_gfevd_crisis.png, id=113, 1011.78pt x 722.7pt>
+File: presentation_assets/04_gfevd_crisis.png Graphic file (type png)
+<use presentation_assets/04_gfevd_crisis.png>
+Package pdftex.def Info: presentation_assets/04_gfevd_crisis.png  used on input
+ line 367.
 (pdftex.def)             Requested size: 94.65344pt x 67.60959pt.
 
 
 [13
 
- <./presentation_assets/04_fevd_calm.png> <./presentation_assets/04_fevd_crisis
-.png>]
-<presentation_assets/05_conditional_forecast_vix_plus1sd.png, id=121, 1011.78pt
+ <./presentation_assets/04_gfevd_calm.png> <./presentation_assets/04_gfevd_cris
+is.png>]
+<presentation_assets/05_conditional_forecast_vix_plus1sd.png, id=120, 1011.78pt
  x 650.43pt>
 File: presentation_assets/05_conditional_forecast_vix_plus1sd.png Graphic file 
 (type png)
 <use presentation_assets/05_conditional_forecast_vix_plus1sd.png>
 Package pdftex.def Info: presentation_assets/05_conditional_forecast_vix_plus1s
-d.png  used on input line 381.
+d.png  used on input line 388.
 (pdftex.def)             Requested size: 229.12277pt x 147.2932pt.
 
 
 [14
 
  <./presentation_assets/05_conditional_forecast_vix_plus1sd.png>]
-<presentation_assets/05_conditional_forecast_invixn_plus1sd.png, id=127, 1011.7
+<presentation_assets/05_conditional_forecast_invixn_plus1sd.png, id=126, 1011.7
 8pt x 650.43pt>
 File: presentation_assets/05_conditional_forecast_invixn_plus1sd.png Graphic fi
 le (type png)
 <use presentation_assets/05_conditional_forecast_invixn_plus1sd.png>
 Package pdftex.def Info: presentation_assets/05_conditional_forecast_invixn_plu
-s1sd.png  used on input line 402.
+s1sd.png  used on input line 409.
 (pdftex.def)             Requested size: 221.61966pt x 142.46977pt.
 
 
 [15
 
  <./presentation_assets/05_conditional_forecast_invixn_plus1sd.png>]
-<presentation_assets/06_irf_lag_sensitivity.png, id=133, 867.24pt x 1445.4pt>
+<presentation_assets/06_irf_lag_sensitivity.png, id=132, 867.24pt x 1445.4pt>
 File: presentation_assets/06_irf_lag_sensitivity.png Graphic file (type png)
 <use presentation_assets/06_irf_lag_sensitivity.png>
 Package pdftex.def Info: presentation_assets/06_irf_lag_sensitivity.png  used o
-n input line 423.
+n input line 430.
 (pdftex.def)             Requested size: 98.51968pt x 164.19946pt.
 
 
@@ -1512,26 +1512,26 @@ n input line 423.
 [17
 
 ]
-<presentation_assets/03_convergence_overview_mn_soc_sur.png, id=146, 2107.875pt
- x 1355.0625pt>
+<presentation_assets/03_convergence_overview_mn_soc_sur.png, id=145, 1011.78pt 
+x 650.43pt>
 File: presentation_assets/03_convergence_overview_mn_soc_sur.png Graphic file (
 type png)
 <use presentation_assets/03_convergence_overview_mn_soc_sur.png>
 Package pdftex.def Info: presentation_assets/03_convergence_overview_mn_soc_sur
-.png  used on input line 465.
-(pdftex.def)             Requested size: 210.34955pt x 135.22472pt.
+.png  used on input line 479.
+(pdftex.def)             Requested size: 255.41454pt x 164.19505pt.
 
 
 [18
 
  <./presentation_assets/03_convergence_overview_mn_soc_sur.png>]
-<presentation_assets/03_hyperparameter_trace_density.png, id=153, 1011.78pt x 8
+<presentation_assets/03_hyperparameter_trace_density.png, id=152, 1011.78pt x 8
 67.24pt>
 File: presentation_assets/03_hyperparameter_trace_density.png Graphic file (typ
 e png)
 <use presentation_assets/03_hyperparameter_trace_density.png>
 Package pdftex.def Info: presentation_assets/03_hyperparameter_trace_density.pn
-g  used on input line 489.
+g  used on input line 503.
 (pdftex.def)             Requested size: 163.38564pt x 140.04483pt.
 
 
@@ -1548,7 +1548,7 @@ g  used on input line 489.
 ]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\translate ' on input line 513.
+(hyperref)                removing `\translate ' on input line 527.
 
 
 
@@ -1572,7 +1572,7 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 
 ]
 LaTeX Font Info:    Font shape `T1/lmss/bx/it' in size <10> not available
-(Font)              Font shape `T1/lmss/bx/sl' tried instead on input line 713.
+(Font)              Font shape `T1/lmss/bx/sl' tried instead on input line 728.
 
 
 
@@ -1604,10 +1604,10 @@ Package rerunfilecheck Info: File `presentation_bvar_check.out' has not changed
 (rerunfilecheck)             Checksum: E0BA96FB4F2DE479B446505E5F7A9BB9;187.
  ) 
 Here is how much of TeX's memory you used:
- 30257 strings out of 473536
- 593917 string characters out of 5714956
- 1386466 words of memory out of 5000000
- 52805 multiletter control sequences out of 15000+600000
+ 30262 strings out of 473536
+ 593992 string characters out of 5714956
+ 1393466 words of memory out of 5000000
+ 52810 multiletter control sequences out of 15000+600000
  665182 words of font info for 110 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  128i,15n,123p,1886b,2265s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -1636,9 +1636,9 @@ C:/Users/lvos2/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy9.pfb><C
 Users/lvos2/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/m
 sbm10.pfb><C:/Users/lvos2/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsf
 onts/symbols/msbm7.pfb>
-Output written on presentation_bvar_check.pdf (28 pages, 3265879 bytes).
+Output written on presentation_bvar_check.pdf (28 pages, 2767995 bytes).
 PDF statistics:
- 354 PDF objects out of 1000 (max. 8388607)
+ 353 PDF objects out of 1000 (max. 8388607)
  66 named destinations out of 1000 (max. 500000)
  22135 words of extra memory for PDF output out of 24883 (max. 10000000)
 

@@ -13,28 +13,25 @@ fit <- bvar(
   data = data_full, lags = 5,
   n_draw = 25000, n_burn = 10000,
   priors = bv_priors(hyper = c("lambda", "alpha", "psi"), mn = mn),
-  irf = bv_irf(horizon = 20, fevd = TRUE, identification = TRUE),
+  irf = bv_irf(horizon = 20, fevd = TRUE, identification = FALSE),
   fcast = bv_fcast(horizon = 20)
 )
 
 irf_full  <- irf(fit, horizon = 20, conf_bands = c(0.05, 0.16))
-fevd_full <- fevd(irf_full, conf_bands = c(0.16))
+gfevd_full <- compute_gfevd(irf_full, fit$sigma, var_names, horizon = 20)
+pred_full <- predict(fit, conf_bands = c(0.05, 0.16))
 \end{lstlisting}
 
   \column{0.38\textwidth}
-  \begin{block}{Why this is useful}
+  \begin{block}{What this workflow gives us}
   \begin{itemize}
-    \item Prior setup, estimation, diagnostics, and post-estimation all live in one API.
-    \item The package makes hierarchical shrinkage operational instead of purely theoretical.
-    \item Conditional forecasts are easy to implement through \texttt{bv\_fcast()}.
+    \item One object for estimation, diagnostics, and post-estimation
+    \item Generalized IRFs and GFEVD-ready posterior draws
+    \item Conditional forecasts for stress scenarios
   \end{itemize}
   \end{block}
 
-  \begin{alertblock}{Outputs we focus on}
-  \begin{itemize}
-    \item IRFs for dynamic transmission
-    \item FEVD for variance attribution
-    \item Scenario forecasts for stress testing
-  \end{itemize}
+  \begin{alertblock}{Why this matters}
+  The package makes the full Bayesian workflow transparent enough for teaching and gives us the objects needed for ordering-invariant post-estimation analysis.
   \end{alertblock}
 \end{columns}

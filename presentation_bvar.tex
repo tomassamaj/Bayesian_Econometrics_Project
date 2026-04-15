@@ -71,7 +71,7 @@
   \begin{itemize}
     \item Six implied-volatility indices in levels
     \item Full sample plus calm-vs-crisis comparison
-    \item IRFs, FEVDs, and conditional forecasts as the main outputs
+    \item Generalized IRFs, GFEVDs, and conditional forecasts as the main outputs
   \end{itemize}
   \end{block}
 
@@ -199,7 +199,7 @@ For this kind of volatility system, Bayesian regularisation is not just elegant 
   \begin{block}{Why \texttt{BVAR} helps}
   \begin{itemize}
     \item The package estimates the model, samples hyperparameters, and produces diagnostics in one workflow.
-    \item IRFs, FEVDs, and scenario forecasts are all generated from the fitted object.
+    \item Generalized IRFs, GFEVDs, and scenario forecasts all come from the fitted object and its posterior draws.
     \item This makes the methodology much easier to operationalise in practice.
   \end{itemize}
   \end{block}
@@ -247,12 +247,12 @@ fit <- bvar(
   data = data_full, lags = 5,
   n_draw = 25000, n_burn = 10000,
   priors = bv_priors(hyper = c("lambda", "alpha", "psi"), mn = mn),
-  irf = bv_irf(horizon = 20, fevd = TRUE, identification = TRUE),
+  irf = bv_irf(horizon = 20, fevd = TRUE, identification = FALSE),
   fcast = bv_fcast(horizon = 20)
 )
 
 irf_full  <- irf(fit, horizon = 20, conf_bands = c(0.05, 0.16))
-fevd_full <- fevd(irf_full, conf_bands = c(0.16))
+gfevd_full <- compute_gfevd(irf_full, fit$sigma, var_names, horizon = 20)
 pred_full <- predict(fit, conf_bands = c(0.05, 0.16))
 \end{lstlisting}
 
@@ -260,28 +260,35 @@ pred_full <- predict(fit, conf_bands = c(0.05, 0.16))
   \begin{block}{What this workflow gives us}
   \begin{itemize}
     \item One object for estimation, diagnostics, and post-estimation
-    \item Built-in IRFs and FEVDs
+    \item Generalized IRFs and GFEVD-ready posterior draws
     \item Conditional forecasts for stress scenarios
   \end{itemize}
   \end{block}
 
   \begin{alertblock}{Why this matters}
-  The package makes the full Bayesian workflow transparent enough for teaching and compact enough for applied work.
+  The package makes the full Bayesian workflow transparent enough for teaching and gives us the objects needed for ordering-invariant post-estimation analysis.
   \end{alertblock}
 \end{columns}
 \end{frame}
 
 \begin{frame}{Minnesota-Only Convergence Diagnostics}
 \scriptsize
-\includegraphics[width=\linewidth,height=0.57\textheight,keepaspectratio]{03_convergence_overview_mn_only.png}
+\begin{columns}[T,onlytextwidth]
+  \column{0.68\textwidth}
+  \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{03_convergence_overview_mn_only.png}
 
-\vspace{0.3em}
-\begin{block}{Takeaway}
-The baseline Minnesota-only specification looks usable: the overall tightness parameter and lag-decay parameter stabilise, while some variable-specific scaling parameters mix more slowly, which is not surprising in a six-variable hierarchical system.
-\end{block}
+  \column{0.29\textwidth}
+  \begin{block}{Takeaway}
+  \begin{itemize}
+    \item $\lambda$ and $\alpha$ stabilise in clear regions.
+    \item Some variable-specific scales mix more slowly, which is normal in a six-variable hierarchical system.
+    \item Overall, the baseline Minnesota specification looks usable.
+  \end{itemize}
+  \end{block}
+\end{columns}
 \end{frame}
 
-\begin{frame}{Full-Sample IRFs: 1 SD VIX Shock}
+\begin{frame}{Full-Sample Generalized IRFs: 1 SD VIX Shock}
 \scriptsize
 \begin{columns}[T,onlytextwidth]
   \column{0.67\textwidth}
@@ -290,7 +297,7 @@ The baseline Minnesota-only specification looks usable: the overall tightness pa
   \column{0.30\textwidth}
   \begin{block}{What we learn}
   \begin{itemize}
-    \item Every market reacts positively to a VIX shock: spillovers are global, not local.
+    \item Without imposing a recursive ordering, every market still reacts positively to a VIX shock.
     \item Europe, the UK, and Japan respond strongly on impact.
     \item India reacts more gradually, but the response remains positive over the full horizon.
     \item The slow decay is consistent with persistent volatility dynamics.
@@ -299,25 +306,25 @@ The baseline Minnesota-only specification looks usable: the overall tightness pa
 \end{columns}
 \end{frame}
 
-\begin{frame}{Full-Sample FEVD}
+\begin{frame}{Full-Sample GFEVD}
 \scriptsize
 \begin{columns}[T,onlytextwidth]
   \column{0.67\textwidth}
-  \includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{03_fevd_full.png}
+  \includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{03_gfevd_full.png}
 
   \column{0.30\textwidth}
   \begin{block}{What we learn}
   \begin{itemize}
-    \item VIX is the dominant shock in most panels, especially for V2X and IVIUK.
-    \item Japan and Hong Kong retain noticeable regional components, so transmission is strong but not exclusive.
-    \item India remains much more self-driven than the other markets.
-    \item FEVD complements the IRFs: the US shock is not only positive, but quantitatively important.
+    \item The ordering-invariant GFEVD still points to VIX as the main external shock in most panels.
+    \item V2X and IVIUK remain especially exposed to US volatility.
+    \item Japan, Hong Kong, and India keep more mixed local and regional contributions.
+    \item GFEVD complements the generalized IRFs by showing which shocks matter quantitatively without imposing causal ordering.
   \end{itemize}
   \end{block}
 \end{columns}
 \end{frame}
 
-\begin{frame}{Crisis vs Calm: IRFs}
+\begin{frame}{Crisis vs Calm: Generalized IRFs}
 \scriptsize
 \begin{columns}[T,onlytextwidth]
   \column{0.67\textwidth}
@@ -329,32 +336,32 @@ The baseline Minnesota-only specification looks usable: the overall tightness pa
     \item Crisis responses are larger on impact and more uncertain.
     \item Europe and the UK react much more strongly during 2020-03-02 to 2020-12-31 than in 2015-01-05 to 2019-12-31.
     \item India becomes far more responsive and peaks later, suggesting delayed but substantial transmission.
-    \item The sign stays positive in both regimes, but the magnitude depends strongly on market conditions.
+    \item The positive sign survives without imposing a recursive ordering, but the magnitude depends strongly on market conditions.
   \end{itemize}
   \end{block}
 \end{columns}
 \end{frame}
 
-\begin{frame}{Crisis vs Calm: FEVD}
+\begin{frame}{Crisis vs Calm: GFEVD}
 \scriptsize
 \begin{columns}[T,onlytextwidth]
   \column{0.65\textwidth}
-  \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{04_fevd_calm.png}
+  \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{04_gfevd_calm.png}
 
   \vspace{0.2em}
-  \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{04_fevd_crisis.png}
+  \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{04_gfevd_crisis.png}
 
   \column{0.32\textwidth}
   \begin{block}{What changes in crisis?}
   \begin{itemize}
-    \item The crisis period shifts variance shares away from own shocks toward cross-market spillovers.
-    \item VIX remains the single most important shock, but IVIUK gains importance in several panels during the crisis.
-    \item Japan, Hong Kong, and India still keep regional components, yet these become relatively smaller in stressed markets.
+    \item The crisis period shifts Hong Kong and India away from own or regional shares toward VIX, V2X, and IVIUK.
+    \item Japan also becomes less self-driven as global shocks take more of the variance.
+    \item VIX remains important, but the crisis decomposition becomes more broadly global rather than locally concentrated.
   \end{itemize}
   \end{block}
 
   \begin{alertblock}{Interpretation}
-  Contagion becomes broader in crisis periods: variance is explained less by purely domestic shocks and more by common external stress.
+  Ordering-invariant variance shares show broader contagion in crisis periods: local components shrink and common external stress explains more of the system.
   \end{alertblock}
 \end{columns}
 \end{frame}
@@ -456,12 +463,19 @@ The baseline Minnesota-only specification looks usable: the overall tightness pa
 
 \begin{frame}{Minnesota + SOC + SUR: Convergence Diagnostics}
 \scriptsize
-\includegraphics[width=\linewidth,height=0.56\textheight,keepaspectratio]{03_convergence_overview_mn_soc_sur.png}
+\begin{columns}[T,onlytextwidth]
+  \column{0.68\textwidth}
+  \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{03_convergence_overview_mn_soc_sur.png}
 
-\vspace{0.3em}
-\begin{block}{Takeaway}
-The extended specification also converges in a usable way: the traces for the marginal likelihood, $\lambda$, SOC, and SUR fluctuate around stable regions, and the posterior densities are reasonably concentrated.
-\end{block}
+  \column{0.29\textwidth}
+  \begin{block}{Takeaway}
+  \begin{itemize}
+    \item The marginal likelihood, $\lambda$, SOC, and SUR fluctuate around stable regions.
+    \item Posterior densities are reasonably concentrated.
+    \item The extended specification also converges in a usable way.
+  \end{itemize}
+  \end{block}
+\end{columns}
 \end{frame}
 
 \begin{frame}{SOC/SUR Traces and Why the Results Barely Change}
@@ -493,7 +507,7 @@ The extended specification also converges in a usable way: the traces for the ma
 \begin{itemize}
   \item A US volatility shock propagates positively to all markets in the system, so spillovers are clearly global.
   \item The transmission is stronger and more uncertain during the 2020 crisis window than in the calm period.
-  \item VIX is the dominant driver in both IRFs and FEVDs, while India remains comparatively more self-driven and less system-defining.
+  \item The GFEVD still highlights VIX as the key external driver, while Hong Kong and India retain relatively larger local or regional components.
   \item Conditional forecasting confirms this asymmetry: a VIX stress scenario moves the whole system more than an India stress scenario.
   \item Our main findings are robust to lag choice and remain qualitatively unchanged when SOC and SUR are added.
 \end{itemize}
@@ -502,9 +516,9 @@ The extended specification also converges in a usable way: the traces for the ma
 \begin{frame}{What This Shows About the \texttt{BVAR} Package}
 \small
 \begin{itemize}
-  \item \texttt{BVAR} turns a full Bayesian workflow into a compact set of functions: prior setup, estimation, diagnostics, IRFs, FEVDs, and scenario forecasts.
+  \item \texttt{BVAR} turns a full Bayesian workflow into a compact set of functions: prior setup, estimation, diagnostics, generalized IRFs, GFEVD-ready posterior objects, and scenario forecasts.
   \item The package makes hierarchical shrinkage operational rather than purely theoretical, which is especially valuable in medium-size VAR systems.
-  \item It is strong not only for estimation, but also for communication: the same fitted object supports substantive results, robustness checks, and stress scenarios.
+  \item It is strong not only for estimation, but also for communication: the same fitted object supports generalized responses, ordering-invariant variance shares, robustness checks, and stress scenarios.
   \item Our project is a good example of this strength: the package lets us move from model setup to empirical conclusions in a coherent and reproducible way.
 \end{itemize}
 \end{frame}
@@ -656,8 +670,9 @@ Treat the prior hyperparameters as random variables:
   \column{0.48\textwidth}
   \begin{block}{Identification and samples}
   \begin{itemize}
-    \item Recursive ordering:
-    \item VIX $\rightarrow$ V2X $\rightarrow$ IVIUK $\rightarrow$ VNKY $\rightarrow$ VHSI $\rightarrow$ INVIXN
+    \item No recursive ordering is imposed.
+    \item \texttt{bv\_irf(..., identification = FALSE)}
+    \item GFEVD follows Pesaran-Shin and is ordering-invariant.
     \item Calm sample: 2015-01-05 to 2019-12-31
     \item Crisis sample: 2020-03-02 to 2020-12-31
   \end{itemize}
@@ -666,7 +681,7 @@ Treat the prior hyperparameters as random variables:
 
 \vspace{0.4em}
 \begin{alertblock}{Interpretation note}
-All results should be read as reduced-form, recursively identified volatility transmission patterns rather than structural causal effects.
+All results should be read as reduced-form, ordering-invariant volatility transmission patterns rather than structural causal effects.
 \end{alertblock}
 \end{frame}
 
