@@ -147,8 +147,9 @@ extract_irf_df <- function(irf_obj, var_names) {
   }))
 }
 
-# Helper: extract FEVD median shares into a tidy data frame.
-# fevd_obj$fevd is an array of dimension [n_draw x response x horizon x impulse].
+# Helper: extract FEVD/GFEVD median shares into a tidy data frame.
+# Accepts any object with a $fevd array of dimension
+# [n_draw x response x horizon x impulse].
 extract_fevd_df <- function(fevd_obj, var_names) {
   arr <- fevd_obj$fevd
   horizon <- dim(arr)[3]
@@ -178,6 +179,72 @@ extract_fevd_df <- function(fevd_obj, var_names) {
       stringsAsFactors = FALSE
     )
   }))
+}
+
+# Helper: Generalised FEVD (Pesaran & Shin 1998).
+# Uses reduced-form (non-orthogonalised) IRF draws together with the posterior
+# draws of the residual covariance matrix to produce an ordering-invariant
+# variance decomposition.
+#
+# irf_obj   : object returned by irf() with identification = TRUE or FALSE;
+#             only the $irf array [n_draw x n_vars x horizon x n_vars] is used.
+# sigma_draws: posterior draws of the residual covariance [n_draw x n_vars x n_vars],
+#              i.e. bvar_obj$sigma.
+# var_names  : character vector of variable names (length n_vars).
+# horizon    : number of horizons to compute (must be <= dim(irf_obj$irf)[3]).
+#
+# Returns a list with element $fevd dimensioned identically to the array that
+# fevd() produces, so extract_fevd_df() and plot_fevd_facets() work unchanged.
+compute_gfevd <- function(irf_obj, sigma_draws, var_names, horizon = 20) {
+  n_draw <- dim(irf_obj$irf)[1]
+  n_vars <- length(var_names)
+
+  # Output array: same layout as bvar fevd() — [n_draw x response x horizon x impulse]
+  gfevd_arr <- array(
+    NA_real_,
+    dim = c(n_draw, n_vars, horizon, n_vars),
+    dimnames = list(NULL, var_names, NULL, var_names)
+  )
+
+  for (d in seq_len(n_draw)) {
+    Sigma    <- sigma_draws[d, , ]          # n_vars x n_vars residual covariance
+    sigma_jj <- diag(Sigma)                 # own-variance of each impulse variable
+
+    # Accumulate squared generalised impulse numerators [response x horizon x impulse]
+    numer <- array(0, dim = c(n_vars, horizon, n_vars))
+
+    for (h in seq_len(horizon)) {
+      # Psi_h: MA coefficient matrix at horizon h  [n_vars x n_vars]
+      # irf array is [draw x response x horizon x impulse]
+      Psi_h <- matrix(irf_obj$irf[d, , h, ], nrow = n_vars, ncol = n_vars)
+
+      for (j in seq_len(n_vars)) {          # impulse j
+        # Generalised impulse of variable r to shock j:
+        #   GI_{r,j,h} = (e_r' Psi_h Sigma e_j) / sqrt(sigma_jj[j])
+        # GFEVD numerator contribution at horizon h is GI^2 (without the
+        # sqrt, because we square immediately):
+        #   = (Psi_h[r, ] %*% Sigma[, j])^2 / sigma_jj[j]
+        gi_vec <- (Psi_h %*% Sigma[, j])^2 / sigma_jj[j]  # length n_vars
+        numer[, h, j] <- gi_vec
+      }
+    }
+
+    # Cumulate over horizon (GFEVD is based on cumulative sums)
+    cum_numer <- apply(numer, c(1, 3), cumsum)  # horizon x response x impulse
+    # aperm to [response x horizon x impulse]
+    cum_numer <- aperm(cum_numer, c(2, 1, 3))
+
+    # Normalise each (response, horizon) cell so shares sum to 1 across impulses
+    for (r in seq_len(n_vars)) {
+      row_sums <- rowSums(cum_numer[r, , ])   # length horizon
+      row_sums[!is.finite(row_sums) | row_sums <= 0] <- 1
+      cum_numer[r, , ] <- cum_numer[r, , ] / row_sums
+    }
+
+    gfevd_arr[d, , , ] <- cum_numer
+  }
+
+  list(fevd = gfevd_arr)   # named $fevd so extract_fevd_df() works unchanged
 }
 
 # Helper: plot forecast panels with 68% and 90% bands
@@ -234,7 +301,7 @@ plot_irf_facets <- function(irf_obj, var_names, impulse_var, title, subtitle) {
     )
 }
 
-# Helper: plot FEVD panels as stacked bar charts
+# Helper: plot GFEVD (or FEVD) panels as stacked bar charts
 plot_fevd_facets <- function(fevd_obj, var_names, title, subtitle) {
   fevd_df <- extract_fevd_df(fevd_obj, var_names)
   shock_cols <- setNames(hcl.colors(length(var_names), "Set 2"), label_var(var_names))
@@ -252,7 +319,7 @@ plot_fevd_facets <- function(fevd_obj, var_names, title, subtitle) {
       title = title,
       subtitle = subtitle,
       x = "Forecast horizon (trading days)",
-      y = "Median FEVD share",
+      y = "Median GFEVD share",
       fill = "Shock"
     ) +
     theme_bw() +
@@ -523,9 +590,7 @@ mn <- bv_minnesota(
 )
 priors <- bv_priors(hyper = c("lambda", "alpha", "psi"), mn = mn)
 
-# IRF: Cholesky identification
-# Ordering: VIX -> V2X -> IVIUK -> VNKY -> VHSI -> INVIXN
-irf_setup <- bv_irf(horizon = 20, fevd = TRUE, identification = TRUE)
+irf_setup <- bv_irf(horizon = 20, fevd = TRUE, identification = FALSE)
 
 # Forecast setup
 fcast_horizon <- 20L
@@ -569,9 +634,9 @@ summary(bvar_full)
 save_base_plot("03_convergence_overview.png", {
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par), add = TRUE)
-  par(oma = c(0, 0, 3, 0))
+  par(oma = c(0, 0, 4, 0))
   plot(bvar_full)
-  mtext("Convergence Diagnostics - Full Sample", outer = TRUE, cex = 1.3, font = 2)
+  mtext("Convergence Diagnostics - Full Sample", outer = TRUE, line = 2.5, cex = 1.3, font = 2)
 }, width = 14, height = 9)
 
 hyper_diag_full <- summarise_hyper_diagnostics(bvar_full$hyper)
@@ -668,18 +733,23 @@ p_irf_full_vix <- plot_irf_facets(
 print(p_irf_full_vix)
 save_gg(p_irf_full_vix, "03_irf_full_vix_shock.png", width = 12, height = 8)
 
-# --- 3.4 FEVD: Forecast Error Variance Decomposition - Full Sample ---
-fevd_full <- fevd(irf_full, conf_bands = c(0.16))
+# --- 3.4 Generalised FEVD - Full Sample ---
+# GFEVD is computed from the reduced-form IRF draws and the posterior residual
+# covariance draws. It is ordering-invariant (Pesaran & Shin 1998).
+gfevd_full <- compute_gfevd(irf_full, bvar_full$sigma, var_names, horizon = 20)
 
-p_fevd_full <- plot_fevd_facets(
-  fevd_obj = fevd_full,
+p_gfevd_full <- plot_fevd_facets(
+  fevd_obj = gfevd_full,
   var_names = var_names,
-  title = "FEVD - Full Sample",
-  subtitle = paste("Sample:", full_sample_label)
+  title = "GFEVD - Full Sample",
+  subtitle = paste(
+    "Sample:", full_sample_label,
+    "| Pesaran & Shin (1998) | Ordering-invariant"
+  )
 )
 
-print(p_fevd_full)
-save_gg(p_fevd_full, "03_fevd_full.png", width = 14, height = 10)
+print(p_gfevd_full)
+save_gg(p_gfevd_full, "03_gfevd_full.png", width = 14, height = 10)
 
 # --- 3.5 Unconditional Forecast - 20 trading days ahead (Slide 16) ---
 pred_full <- predict(bvar_full, conf_bands = c(0.05, 0.16))
@@ -770,28 +840,34 @@ p_irf_compare <- (p_irf_calm / p_irf_crisis) +
 print(p_irf_compare)
 save_gg(p_irf_compare, "04_irf_calm_vs_crisis.png", width = 12, height = 14)
 
-# --- 4.4 FEVD comparison: full, calm, crisis ---
-fevd_calm <- fevd(irf_calm, conf_bands = c(0.16))
-fevd_crisis <- fevd(irf_crisis, conf_bands = c(0.16))
+# --- 4.4 Generalised FEVD comparison: calm vs crisis ---
+gfevd_calm   <- compute_gfevd(irf_calm,   bvar_calm$sigma,   var_names, horizon = 20)
+gfevd_crisis <- compute_gfevd(irf_crisis, bvar_crisis$sigma, var_names, horizon = 20)
 
-p_fevd_calm <- plot_fevd_facets(
-  fevd_obj = fevd_calm,
+p_gfevd_calm <- plot_fevd_facets(
+  fevd_obj = gfevd_calm,
   var_names = var_names,
-  title = "FEVD - Calm Period",
-  subtitle = paste("Sample:", calm_sample_label)
+  title = "GFEVD - Calm Period",
+  subtitle = paste(
+    "Sample:", calm_sample_label,
+    "| Pesaran & Shin (1998) | Ordering-invariant"
+  )
 )
 
-p_fevd_crisis <- plot_fevd_facets(
-  fevd_obj = fevd_crisis,
+p_gfevd_crisis <- plot_fevd_facets(
+  fevd_obj = gfevd_crisis,
   var_names = var_names,
-  title = paste("FEVD -", crisis_regime_title),
-  subtitle = paste("Sample:", crisis_sample_label)
+  title = paste("GFEVD -", crisis_regime_title),
+  subtitle = paste(
+    "Sample:", crisis_sample_label,
+    "| Pesaran & Shin (1998) | Ordering-invariant"
+  )
 )
 
-print(p_fevd_calm)
-print(p_fevd_crisis)
-save_gg(p_fevd_calm, "04_fevd_calm.png", width = 14, height = 10)
-save_gg(p_fevd_crisis, "04_fevd_crisis.png", width = 14, height = 10)
+print(p_gfevd_calm)
+print(p_gfevd_crisis)
+save_gg(p_gfevd_calm,   "04_gfevd_calm.png",   width = 14, height = 10)
+save_gg(p_gfevd_crisis, "04_gfevd_crisis.png", width = 14, height = 10)
 
 # Sub-sample hyperparameter comparison
 cat("Full sample lambda (median):", median(bvar_full$hyper[, "lambda"]), "\n")
