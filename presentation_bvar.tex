@@ -1,8 +1,6 @@
 % ============================================================
-% Bayesian Econometrics - Student Presentation I (26.03.2026)
-% Paper: Kuschnig & Vashold (2021), BVAR package
-% Project: Global Volatility Transmission
-% Presenters: Tomas Samaj & Luuk Vos
+% Bayesian Econometrics - Final Presentation
+% Project: Global Volatility Transmission with BVAR
 % ============================================================
 
 \documentclass[10pt, aspectratio=169]{beamer}
@@ -10,15 +8,35 @@
 % ---------- Theme ----------
 \usetheme{metropolis}
 \usecolortheme{default}
+\setbeamertemplate{footline}[frame number]
+\metroset{block=fill}
 
 % ---------- Packages ----------
-\usepackage{amsmath, amssymb, bm}
+\usepackage{amsmath, amssymb}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage{lmodern}
 \usepackage[expansion=false]{microtype}
 \usepackage{hyperref}
+\usepackage{listings}
+
+% ---------- Graphics ----------
+\graphicspath{{presentation_assets/}}
+
+% ---------- Listings ----------
+\lstset{
+  basicstyle=\ttfamily\scriptsize,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  frame=single,
+  framerule=0.3pt,
+  rulecolor=\color{black!30},
+  breaklines=true
+}
 
 % ---------- Colours ----------
 \definecolor{wured}{RGB}{150, 30, 40}
@@ -26,11 +44,10 @@
 \setbeamercolor{progress bar}{fg=wured}
 
 % ---------- Metadata ----------
-\title{BVAR: Bayesian Vector Autoregressions\\with Hierarchical Prior Selection in R}
-\subtitle{Kuschnig \& Vashold (2021) \textnormal{\small\itshape Journal of Statistical Software, Vol.~100}}
-\author{Tom\'{a}\v{s} \v{S}amaj \and Luuk Vos}
-\institute{Bayesian Econometrics \textbar{} WU Vienna}
-\date{26 March 2026}
+\title{Global Volatility Spillovers\\with the \texttt{BVAR} Package}
+\author{Tomas Samaj \and Luuk Vos}
+\institute{WU Vienna}
+\date{15 April 2026}
 
 % ============================================================
 \begin{document}
@@ -38,317 +55,629 @@
 
 \maketitle
 
-%% ---------------------------------------------------------------
-\section{The Paper}
-%% ---------------------------------------------------------------
+% ------------------------------------------------------------
+\section{Main Results}
+% ------------------------------------------------------------
 
-% ------ SLIDE 2: Motivation ------
-\begin{frame}{Motivation: The Curse of Dimensionality}
-
-\textbf{Vector Autoregression (VAR)} jointly models $M$ time series over $p$ lags:
-\[
-  \bm{y}_{t} = \bm{a}_0+ A_1\bm{y}_{t-1} + \cdots + A_p\bm{y}_{t-p} + \bm{\varepsilon}_t,
-  \qquad \bm{\varepsilon}_t \sim \mathcal{N}(\bm{0}, \Sigma)
-\]
-
-\begin{columns}[T]
+\begin{frame}{Project Overview}
+\small
+\begin{columns}[T,onlytextwidth]
   \column{0.52\textwidth}
-    \textbf{The problem:}
-    \begin{itemize}
-      \item Parameter count: $M + M^2 p$ \;\textrightarrow\; grows quadratically
-      \item $M{=}6$, $p{=}5$: already \textbf{186 parameters}
-      \item OLS overfits; poor out-of-sample forecasting
-    \end{itemize}
+  \begin{block}{What is our project?}
+  We study how volatility shocks propagate across six major equity markets using a Bayesian VAR, and we compare calm and crisis regimes to see whether global transmission intensifies under stress.
+  \end{block}
+
+  \begin{block}{Empirical design}
+  \begin{itemize}
+    \item Six implied-volatility indices in levels
+    \item Full sample plus calm-vs-crisis comparison
+    \item IRFs, FEVDs, and conditional forecasts as the main outputs
+  \end{itemize}
+  \end{block}
 
   \column{0.44\textwidth}
-    \textbf{Bayesian solution:}
-    \begin{itemize}
-      \item Encode prior knowledge via $p(\bm{\theta})$
-      \item Regularise via \textbf{shrinkage priors}
-      \item Posterior $\propto$ Likelihood $\times$ Prior
-    \end{itemize}
+  \begin{block}{Why this is a good \texttt{BVAR} application}
+  \begin{itemize}
+    \item Volatility is persistent and strongly comoving.
+    \item A six-variable VAR with five lags already has 186 coefficients.
+    \item Bayesian shrinkage is therefore central to making the model usable.
+  \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Our angle}
+  We use this project to show how the \texttt{BVAR} package turns a theoretically rich model into an applied workflow that is easy to estimate, diagnose, and interpret.
+  \end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Why \texttt{BVAR}?}
+\small
+\begin{columns}[T,onlytextwidth]
+  \column{0.48\textwidth}
+  \begin{block}{Dimensionality problem}
+  A VAR with $M$ variables and $p$ lags has
+  \[
+    M + M^2 p
+  \]
+  slope parameters before the covariance matrix.
+
+  With $M=6$ and $p=5$, this already implies
+  \[
+    6 + 6^2 \cdot 5 = 186
+  \]
+  coefficients to regularise.
+  \end{block}
+
+  \column{0.48\textwidth}
+  \begin{block}{Why Bayesian shrinkage helps}
+  \begin{itemize}
+    \item It shrinks weak coefficients toward sensible benchmarks.
+    \item It reduces overfitting in a medium-size system.
+    \item It improves stability for forecasting and impulse analysis.
+  \end{itemize}
+  \end{block}
 \end{columns}
 
-\vspace{0.8em}
-\metroset{block=fill}
-\begin{block}{Key challenge}
-  How to choose the prior's hyperparameters in a principled, data-driven way?
+\vspace{0.4em}
+\begin{alertblock}{Practical message}
+For this kind of volatility system, Bayesian regularisation is not just elegant theory; it is what makes the VAR empirically tractable.
+\end{alertblock}
+\end{frame}
+
+\begin{frame}{Compact Theory: VAR and Minnesota Prior}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.52\textwidth}
+  \begin{block}{Bayesian VAR}
+  \[
+    \boldsymbol{y}_{t}=\boldsymbol{a}_0+A_1\boldsymbol{y}_{t-1}+\cdots+A_p\boldsymbol{y}_{t-p}+\boldsymbol{\varepsilon}_t,
+    \qquad
+    \boldsymbol{\varepsilon}_t\sim\mathcal{N}(\boldsymbol{0},\Sigma)
+  \]
+  \end{block}
+
+  \begin{block}{Minnesota prior}
+  \[
+    \mathbb{E}\!\left[(A_s)_{ij}\mid\Sigma\right]=
+    \begin{cases}
+      1 & i=j,\ s=1 \\
+      0 & \text{otherwise}
+    \end{cases}
+  \]
+  \[
+    \operatorname{Var}\!\left[(A_s)_{ij}\mid\Sigma\right]
+    \propto
+    \frac{\lambda^2\psi_j}{s^{2\alpha}}
+    \cdot
+    \frac{\sigma_{ii}}{\sigma_{jj}}
+  \]
+  \end{block}
+
+  \column{0.44\textwidth}
+  \begin{block}{Interpretation}
+  \begin{itemize}
+    \item Each series is assumed to be persistent in its own first lag.
+    \item Cross-variable lag effects are shrunk toward zero unless the data strongly support them.
+    \item $\lambda$ controls overall tightness, $\alpha$ controls lag decay, and $\psi_j$ scales variable-specific uncertainty.
+  \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Why this fits our data}
+  Volatility indices are persistent and correlated, so the Minnesota prior stabilises the system without ruling out spillovers.
+  \end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Compact Theory: Learning Shrinkage from the Data}
+\small
+\begin{block}{Hierarchical prior selection}
+\[
+  p(\boldsymbol{\theta},\boldsymbol{\gamma}\mid\boldsymbol{y})
+  \propto
+  p(\boldsymbol{y}\mid\boldsymbol{\gamma})\,p(\boldsymbol{\gamma}),
+  \qquad
+  p(\boldsymbol{y}\mid\boldsymbol{\gamma})
+  =
+  \int
+  p(\boldsymbol{y}\mid\boldsymbol{\theta},\boldsymbol{\gamma})
+  p(\boldsymbol{\theta}\mid\boldsymbol{\gamma})
+  \,d\boldsymbol{\theta}
+\]
 \end{block}
 
+\begin{columns}[T,onlytextwidth]
+  \column{0.48\textwidth}
+  \begin{block}{Interpretation}
+  \begin{itemize}
+    \item Hyperparameters such as $\lambda$ are not fixed manually.
+    \item They are learned through the marginal likelihood.
+    \item The procedure automatically balances fit against overfitting.
+  \end{itemize}
+  \end{block}
+
+  \column{0.48\textwidth}
+  \begin{block}{Why \texttt{BVAR} helps}
+  \begin{itemize}
+    \item The package estimates the model, samples hyperparameters, and produces diagnostics in one workflow.
+    \item IRFs, FEVDs, and scenario forecasts are all generated from the fitted object.
+    \item This makes the methodology much easier to operationalise in practice.
+  \end{itemize}
+  \end{block}
+\end{columns}
 \end{frame}
 
-% ------ INTUITION: VAR ------
-\begin{frame}{Intuition: Why Does Dimensionality Matter?}
+\begin{frame}{Data and Empirical Setting}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.66\textwidth}
+  \includegraphics[width=\linewidth,height=0.65\textheight,keepaspectratio]{01_timeseries.png}
 
-\begin{columns}[T]
+  \column{0.31\textwidth}
+  \begin{block}{Setup}
+  \begin{itemize}
+    \item VIX, V2X, IVIUK, VNKY, VHSI, INVIXN
+    \item Sample: 2015-01-05 to 2026-03-31
+    \item Calm sample: 2015-01-05 to 2019-12-31
+    \item Crisis sample: 2020-03-02 to 2020-12-31
+  \end{itemize}
+  \end{block}
+
+  \begin{block}{What the figure shows}
+  \begin{itemize}
+    \item All markets spike sharply in early 2020.
+    \item Levels differ by region, but common movement is strong.
+    \item This makes the system well suited to a spillover analysis.
+  \end{itemize}
+  \end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{\texttt{BVAR} Package Workflow}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.58\textwidth}
+\begin{lstlisting}[language=R,basicstyle=\ttfamily\tiny]
+mn <- bv_minnesota(
+  lambda = bv_lambda(mode = 0.2, sd = 0.4),
+  alpha  = bv_alpha(mode = 2),
+  psi    = bv_psi(scale = 0.004, shape = 0.004)
+)
+
+fit <- bvar(
+  data = data_full, lags = 5,
+  n_draw = 25000, n_burn = 10000,
+  priors = bv_priors(hyper = c("lambda", "alpha", "psi"), mn = mn),
+  irf = bv_irf(horizon = 20, fevd = TRUE, identification = TRUE),
+  fcast = bv_fcast(horizon = 20)
+)
+
+irf_full  <- irf(fit, horizon = 20, conf_bands = c(0.05, 0.16))
+fevd_full <- fevd(irf_full, conf_bands = c(0.16))
+pred_full <- predict(fit, conf_bands = c(0.05, 0.16))
+\end{lstlisting}
+
+  \column{0.38\textwidth}
+  \begin{block}{What this workflow gives us}
+  \begin{itemize}
+    \item One object for estimation, diagnostics, and post-estimation
+    \item Built-in IRFs and FEVDs
+    \item Conditional forecasts for stress scenarios
+  \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Why this matters}
+  The package makes the full Bayesian workflow transparent enough for teaching and compact enough for applied work.
+  \end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Minnesota-Only Convergence Diagnostics}
+\scriptsize
+\includegraphics[width=\linewidth,height=0.57\textheight,keepaspectratio]{03_convergence_overview_mn_only.png}
+
+\vspace{0.3em}
+\begin{block}{Takeaway}
+The baseline Minnesota-only specification looks usable: the overall tightness parameter and lag-decay parameter stabilise, while some variable-specific scaling parameters mix more slowly, which is not surprising in a six-variable hierarchical system.
+\end{block}
+\end{frame}
+
+\begin{frame}{Full-Sample IRFs: 1 SD VIX Shock}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.67\textwidth}
+  \includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{03_irf_full_vix_shock.png}
+
+  \column{0.30\textwidth}
+  \begin{block}{What we learn}
+  \begin{itemize}
+    \item Every market reacts positively to a VIX shock: spillovers are global, not local.
+    \item Europe, the UK, and Japan respond strongly on impact.
+    \item India reacts more gradually, but the response remains positive over the full horizon.
+    \item The slow decay is consistent with persistent volatility dynamics.
+  \end{itemize}
+  \end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Full-Sample FEVD}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.67\textwidth}
+  \includegraphics[width=\linewidth,height=0.72\textheight,keepaspectratio]{03_fevd_full.png}
+
+  \column{0.30\textwidth}
+  \begin{block}{What we learn}
+  \begin{itemize}
+    \item VIX is the dominant shock in most panels, especially for V2X and IVIUK.
+    \item Japan and Hong Kong retain noticeable regional components, so transmission is strong but not exclusive.
+    \item India remains much more self-driven than the other markets.
+    \item FEVD complements the IRFs: the US shock is not only positive, but quantitatively important.
+  \end{itemize}
+  \end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Crisis vs Calm: IRFs}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.67\textwidth}
+  \includegraphics[width=\linewidth,height=0.70\textheight,keepaspectratio]{04_irf_calm_vs_crisis.png}
+
+  \column{0.30\textwidth}
+  \begin{block}{What changes in crisis?}
+  \begin{itemize}
+    \item Crisis responses are larger on impact and more uncertain.
+    \item Europe and the UK react much more strongly during 2020-03-02 to 2020-12-31 than in 2015-01-05 to 2019-12-31.
+    \item India becomes far more responsive and peaks later, suggesting delayed but substantial transmission.
+    \item The sign stays positive in both regimes, but the magnitude depends strongly on market conditions.
+  \end{itemize}
+  \end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Crisis vs Calm: FEVD}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.65\textwidth}
+  \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{04_fevd_calm.png}
+
+  \vspace{0.2em}
+  \includegraphics[width=\linewidth,height=0.28\textheight,keepaspectratio]{04_fevd_crisis.png}
+
+  \column{0.32\textwidth}
+  \begin{block}{What changes in crisis?}
+  \begin{itemize}
+    \item The crisis period shifts variance shares away from own shocks toward cross-market spillovers.
+    \item VIX remains the single most important shock, but IVIUK gains importance in several panels during the crisis.
+    \item Japan, Hong Kong, and India still keep regional components, yet these become relatively smaller in stressed markets.
+  \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Interpretation}
+  Contagion becomes broader in crisis periods: variance is explained less by purely domestic shocks and more by common external stress.
+  \end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Conditional Forecast: Persistent VIX Stress}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.68\textwidth}
+  \includegraphics[width=\linewidth,height=0.61\textheight,keepaspectratio]{05_conditional_forecast_vix_plus1sd.png}
+
+  \column{0.29\textwidth}
+  \begin{block}{What we learn}
+  \begin{itemize}
+    \item Fixing VIX one forecast standard deviation above baseline lifts every other forecast path.
+    \item V2X, IVIUK, and VNKY show the largest upward shifts.
+    \item The gap to baseline persists over the full horizon, so this is not just a one-day response.
+  \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Why this showcases the package}
+  The scenario is implemented directly with \texttt{bv\_fcast()} and \texttt{predict()}, so stress testing becomes part of the standard workflow.
+  \end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Conditional Forecast: India Stress Scenario}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.68\textwidth}
+  \includegraphics[width=\linewidth,height=0.59\textheight,keepaspectratio]{05_conditional_forecast_invixn_plus1sd.png}
+
+  \column{0.29\textwidth}
+  \begin{block}{What we learn}
+  \begin{itemize}
+    \item A one-standard-deviation India shock still raises the other paths, but much less than the VIX scenario.
+    \item This is interesting because India is the only emerging-market index in the system.
+    \item The figure suggests weaker outward transmission from India than from the US.
+  \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Interpretation}
+  India is affected by global volatility, but its own stress scenario appears to be less system-defining than a comparable VIX shock.
+  \end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Robustness to Lag Length}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.68\textwidth}
+  \includegraphics[width=\linewidth,height=0.68\textheight,keepaspectratio]{06_irf_lag_sensitivity.png}
+
+  \column{0.29\textwidth}
+  \begin{block}{What we learn}
+  \begin{itemize}
+    \item The ranking of responses is stable across 1, 3, and 5 lags.
+    \item Shorter lag models smooth the early dynamics.
+    \item Five lags allow sharper short-run spillovers, but the economic message stays the same.
+  \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Bottom line}
+  Our conclusions are not an artefact of one particular lag choice.
+  \end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{SOC and SUR: What Do They Add?}
+\small
+\begin{columns}[T,onlytextwidth]
   \column{0.48\textwidth}
-    \textbf{The core problem:}
-    \begin{itemize}
-      \item More variables and lags $\Rightarrow$ exponentially more parameters
-      \item OLS must estimate all of them from limited data
-      \item The model fits noise rather than signal
-    \end{itemize}
+  \begin{block}{Sum-of-coefficients prior (SOC)}
+  \[
+    \boldsymbol{y^+}=diag\!\left(\frac{\bar{\boldsymbol{y}}}{\mu}\right),
+    \qquad
+    \boldsymbol{x^+}=[\boldsymbol{0},\boldsymbol{y^+},\dots,\boldsymbol{y^+}]
+  \]
+  \end{block}
 
   \column{0.48\textwidth}
-    \textbf{Why Bayesian shrinkage helps:}
-    \begin{itemize}
-      \item A prior acts as a soft constraint: it shrinks estimates toward a simple, persistent benchmark
-      \item Lets the data override the prior only where evidence is strong
-      \item Better out-of-sample forecasts with far fewer ``effective'' parameters
-    \end{itemize}
+  \begin{block}{Single-unit-root prior (SUR)}
+  \[
+    \boldsymbol{y^{++}}=\frac{\bar{\boldsymbol{y}}^\top}{\delta},
+    \qquad
+    \boldsymbol{x^{++}}=\left[\frac{1}{\delta},\boldsymbol{y^{++}},\dots,\boldsymbol{y^{++}}\right]
+  \]
+  \end{block}
 \end{columns}
 
-\vspace{0.8em}
-\alert{Key takeaway:} Without regularisation, a VAR with many variables is unreliable. Bayesian priors are a principled way to regularise.
-
+\vspace{0.4em}
+\begin{block}{Interpretation}
+\begin{itemize}
+  \item SOC pushes the system toward persistent no-change dynamics.
+  \item SUR allows common stochastic trends or cointegration-like persistence.
+  \item Because our series are volatility levels, these priors are admissible as a robustness extension.
+\end{itemize}
+\end{block}
 \end{frame}
 
-% ------ SLIDE 3: Minnesota Prior ------
-\begin{frame}{The Minnesota Prior}
+\begin{frame}{Minnesota + SOC + SUR: Convergence Diagnostics}
+\scriptsize
+\includegraphics[width=\linewidth,height=0.56\textheight,keepaspectratio]{03_convergence_overview_mn_soc_sur.png}
 
-\textbf{Core idea} (Litterman 1980): each variable is a priori a random walk.
+\vspace{0.3em}
+\begin{block}{Takeaway}
+The extended specification also converges in a usable way: the traces for the marginal likelihood, $\lambda$, SOC, and SUR fluctuate around stable regions, and the posterior densities are reasonably concentrated.
+\end{block}
+\end{frame}
+
+\begin{frame}{SOC/SUR Traces and Why the Results Barely Change}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.58\textwidth}
+  \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{03_hyperparameter_trace_density.png}
+
+  \column{0.39\textwidth}
+  \begin{block}{What the traces show}
+  \begin{itemize}
+    \item The added hyperparameters stay in stable regions.
+    \item Posterior mass concentrates around moderate values for $\lambda$, SOC, and SUR.
+  \end{itemize}
+  \end{block}
+
+  \begin{block}{Why the economic results barely change}
+  \begin{itemize}
+    \item The data are already persistent and estimated in levels.
+    \item The Minnesota prior already captures most of the relevant persistence.
+    \item SOC and SUR mainly reinforce that persistence rather than introduce a new cross-market story.
+  \end{itemize}
+  \end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Project Conclusions}
+\small
+\begin{itemize}
+  \item A US volatility shock propagates positively to all markets in the system, so spillovers are clearly global.
+  \item The transmission is stronger and more uncertain during the 2020 crisis window than in the calm period.
+  \item VIX is the dominant driver in both IRFs and FEVDs, while India remains comparatively more self-driven and less system-defining.
+  \item Conditional forecasting confirms this asymmetry: a VIX stress scenario moves the whole system more than an India stress scenario.
+  \item Our main findings are robust to lag choice and remain qualitatively unchanged when SOC and SUR are added.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{What This Shows About the \texttt{BVAR} Package}
+\small
+\begin{itemize}
+  \item \texttt{BVAR} turns a full Bayesian workflow into a compact set of functions: prior setup, estimation, diagnostics, IRFs, FEVDs, and scenario forecasts.
+  \item The package makes hierarchical shrinkage operational rather than purely theoretical, which is especially valuable in medium-size VAR systems.
+  \item It is strong not only for estimation, but also for communication: the same fitted object supports substantive results, robustness checks, and stress scenarios.
+  \item Our project is a good example of this strength: the package lets us move from model setup to empirical conclusions in a coherent and reproducible way.
+\end{itemize}
+\end{frame}
+
+% ------------------------------------------------------------
+\appendix
+% ------------------------------------------------------------
+
+\begin{frame}{Appendix: VAR Setup}
+\small
+\begin{block}{Model}
+\[
+  \boldsymbol{y}_{t} = \boldsymbol{a}_0 + A_1 \boldsymbol{y}_{t-1} + \cdots + A_p \boldsymbol{y}_{t-p} + \boldsymbol{\varepsilon}_t,
+  \qquad
+  \boldsymbol{\varepsilon}_t \sim \mathcal{N}(\boldsymbol{0}, \Sigma)
+\]
+\end{block}
+
+\begin{columns}[T,onlytextwidth]
+  \column{0.48\textwidth}
+  \begin{block}{Why OLS is not enough}
+  \begin{itemize}
+    \item Parameter count rises quickly with the number of variables and lags.
+    \item Financial volatility series are persistent and strongly correlated.
+    \item Unregularised VARs can overfit in-sample noise.
+  \end{itemize}
+  \end{block}
+
+  \column{0.48\textwidth}
+  \begin{block}{Why Bayesian shrinkage helps}
+  \begin{itemize}
+    \item Priors shrink weak coefficients toward economically sensible benchmarks.
+    \item The data can still dominate when the signal is strong.
+    \item This improves stability and forecast performance in medium-size systems.
+  \end{itemize}
+  \end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Appendix: Minnesota Prior}
+\small
+\begin{block}{Prior mean}
 \[
   \mathbb{E}\!\left[(A_s)_{ij}\mid\Sigma\right] =
-  \begin{cases} 1 & i = j,\; s = 1 \text{ (first lag)} \\ 0 & \text{otherwise} \end{cases}
+  \begin{cases}
+    1 & \text{if } i=j,\ s=1 \\
+    0 & \text{otherwise}
+  \end{cases}
 \]
-\[
-  \operatorname{Var}\!\left[(A_s)_{ij}\mid\Sigma\right]
-  \propto \frac{\lambda^2 \psi_j}{s^{\,2\alpha}}\cdot\frac{\sigma_{ii}}{\sigma_{jj}}
-\]
-
-\vspace{0.5cm}
-\begin{columns}[T]
-  \column{0.48\textwidth}
-    \textbf{Key hyperparameters:}
-    \begin{itemize}
-      \item $\lambda$ - overall tightness\\
-            ($\lambda \to 0$: only prior; $\lambda \to \infty$: only data)
-      \item $\alpha$ - lag-decay speed
-      \item $\psi_j$ - per-variable scaling
-    \end{itemize}
-
-  \column{0.48\textwidth}
-    \textbf{Refinements:}
-    {\small
-    \begin{itemize}
-      \item \textbf{Sum-of-coefficients} ($\mu$): shrinks coefficients so persistent variables behave like they stay near their current level
-      \item \textbf{Single-unit-root} ($\delta$): shrinks the system toward common stochastic trends, helping accommodate cointegration
-    \end{itemize}}
-\end{columns}
-
-\vspace{0.5em}
-\alert{Open problem:} setting $\lambda, \mu, \delta$ manually is ad hoc and dataset-specific.
-
-\end{frame}
-
-% ------ INTUITION: Minnesota Prior ------
-\begin{frame}{Intuition: Why a Random Walk Prior?}
-
-
-\textbf{The economic logic:}
-\begin{itemize}
-\item Most macro and financial series are persistent - today's value is a good predictor of tomorrow's
-\item Random walk encodes this: ``absent other information, things stay roughly the same''
-\item Cross-variable effects are shrunk toward zero - a variable rarely drives another strongly across lags
-\end{itemize}
-
-\vspace{0.8em}
-\alert{Key takeaway:} The random walk prior is not an assumption we believe literally -- it is a useful regularisation device grounded in stylised facts about time series.
-
-\end{frame}
-
-% ------ SLIDE 4: Hierarchical Prior Selection ------
-\begin{frame}{Hierarchical Prior Selection (Giannone et al.\ 2015)}
-
-\textbf{Key idea}: treat hyperparameters $\bm{\gamma} = (\lambda, \mu, \delta, \ldots)$ as random variables.
-
-\bigskip
-\textbf{Two-level Bayesian model:}
-\[
-  p(\bm{\theta}, \bm{\gamma} \mid \bm{y})
-  \;\propto\;
-  \underbrace{p(\bm{y} \mid \bm{\gamma})}_{\text{marginal likelihood}}
-  \; p(\bm{\gamma})
-\]
-\[
-  p(\bm{y} \mid \bm{\gamma})
-  = \int p(\bm{y} \mid \bm{\theta}, \bm{\gamma})\; p(\bm{\theta} \mid \bm{\gamma})\; d\bm{\theta}
-\]
-
-\begin{itemize}
-  \item Marginal likelihood \textbf{penalises complexity} automatically (Occam's razor)
-  \item With conjugate NIW prior $\Rightarrow$ \textbf{closed-form} $p(\bm{y}\mid\bm{\gamma})$
-  \item $\bm{\gamma}$ drawn via \textbf{Metropolis-Hastings}; $\bm{\theta}$ drawn analytically
-\end{itemize}
-
-\vspace{0.4em}
-\metroset{block=fill}
-\begin{block}{Practical benefit}
-  Optimal shrinkage is learned from data - no manual tuning required.
 \end{block}
 
-\end{frame}
+\begin{block}{Prior variance}
+\[
+  \operatorname{Var}\!\left[(A_s)_{ij}\mid\Sigma\right]
+  \propto
+  \frac{\lambda^2 \psi_j}{s^{2\alpha}}
+  \cdot
+  \frac{\sigma_{ii}}{\sigma_{jj}}
+\]
+\end{block}
 
-% ------ INTUITION: Hierarchical Prior Selection ------
-\begin{frame}{Intuition: Why Learn Hyperparameters from Data?}
-
-\begin{columns}[T]
-  \column{0.48\textwidth}
-    \textbf{The problem with manual tuning:}
-    \begin{itemize}
-      \item Different datasets need different amounts of shrinkage
-      \item Short samples: tighter prior helps; long samples: data should dominate
-      \item Manually choosing $\lambda$ is arbitrary and hard to justify
-    \end{itemize}
-
-  \column{0.48\textwidth}
-    \textbf{The hierarchical solution:}
-    \begin{itemize}
-      \item Marginal likelihood rewards priors that make the data probable
-      \item It automatically penalises models that are too complex or too rigid
-      \item Can be thought of as ``Bayesian cross-validation'' built into the estimation
-    \end{itemize}
-\end{columns}
-
-\vspace{0.8em}
-\alert{Key takeaway:} Instead of guessing the right amount of shrinkage, the model learns it. This makes results reproducible and principled across different datasets and sample sizes.
-
-\end{frame}
-
-% ------ INTUITION: GFEVD, IRF and Key Outputs ------
-\begin{frame}{Intuition: IRF, FEVD and GFEVD}
-
-\textbf{Impulse Response Function (IRF):} traces how a one standard deviation shock to variable $j$ propagates to variable $i$ over time.
 \begin{itemize}
-  \item Answers: \textit{``If US volatility spikes today, by how much does European volatility rise in 5 days?''}
-  \item Recursive (Cholesky) identification assumes a causal ordering; sign-restrictions are an alternative
+  \item $\lambda$: overall tightness
+  \item $\alpha$: lag decay
+  \item $\psi_j$: variable-specific scaling
+  \item Intuition: own first lags are persistent; cross-lag effects are shrunk strongly toward zero
 \end{itemize}
+\end{frame}
+
+\begin{frame}{Appendix: Hierarchical Hyperparameter Selection}
+\small
+\begin{block}{Key idea}
+Treat the prior hyperparameters as random variables:
+\[
+  p(\boldsymbol{\theta}, \boldsymbol{\gamma} \mid \boldsymbol{y})
+  \propto
+  p(\boldsymbol{y} \mid \boldsymbol{\gamma})\,
+  p(\boldsymbol{\gamma}),
+  \qquad
+  p(\boldsymbol{y} \mid \boldsymbol{\gamma})
+  =
+  \int
+  p(\boldsymbol{y} \mid \boldsymbol{\theta}, \boldsymbol{\gamma})
+  p(\boldsymbol{\theta} \mid \boldsymbol{\gamma})
+  \, d\boldsymbol{\theta}
+\]
+\end{block}
+
+\begin{columns}[T,onlytextwidth]
+  \column{0.48\textwidth}
+  \begin{block}{Why this matters}
+  \begin{itemize}
+    \item Shrinkage is learned from the data instead of fixed by hand.
+    \item The marginal likelihood penalises overly flexible models automatically.
+    \item Results become easier to justify and replicate.
+  \end{itemize}
+  \end{block}
+
+  \column{0.48\textwidth}
+  \begin{block}{How \texttt{BVAR} implements it}
+  \begin{itemize}
+    \item Conjugate NIW structure gives closed-form posteriors for core parameters.
+    \item Hyperparameters are sampled with Metropolis-Hastings.
+    \item Diagnostics are available directly from the fitted object.
+  \end{itemize}
+  \end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Appendix: SOC and SUR Dummy Priors}
+\small
+\begin{block}{Sum-of-coefficients prior (SOC)}
+\[
+  \boldsymbol{y^+} = diag\!\left(\frac{\bar{\boldsymbol{y}}}{\mu}\right),
+  \qquad
+  \boldsymbol{x^+} = [\boldsymbol{0}, \boldsymbol{y^+}, \dots, \boldsymbol{y^+}]
+\]
+\end{block}
+
+\begin{block}{Single-unit-root prior (SUR)}
+\[
+  \boldsymbol{y^{++}} = \frac{\bar{\boldsymbol{y}}^\top}{\delta},
+  \qquad
+  \boldsymbol{x^{++}} = \left[\frac{1}{\delta}, \boldsymbol{y^{++}}, \dots, \boldsymbol{y^{++}}\right]
+\]
+\end{block}
+
+\begin{itemize}
+  \item SOC shrinks the system toward ``no large changes from current levels.''
+  \item SUR allows persistent common movement and is useful when cointegration-like behaviour is plausible.
+  \item These priors are designed for VARs in levels, which is why we only use them as a level-data robustness extension.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Appendix: Estimation Choices in Our Script}
+\small
+\begin{columns}[T,onlytextwidth]
+  \column{0.48\textwidth}
+  \begin{block}{Baseline specification}
+  \begin{itemize}
+    \item Six volatility indices in levels
+    \item Lags: $p=5$
+    \item Draws: 25{,}000
+    \item Burn-in: 10{,}000
+    \item IRF / forecast horizon: 20 trading days
+  \end{itemize}
+  \end{block}
+
+  \column{0.48\textwidth}
+  \begin{block}{Identification and samples}
+  \begin{itemize}
+    \item Recursive ordering:
+    \item VIX $\rightarrow$ V2X $\rightarrow$ IVIUK $\rightarrow$ VNKY $\rightarrow$ VHSI $\rightarrow$ INVIXN
+    \item Calm sample: 2015-01-05 to 2019-12-31
+    \item Crisis sample: 2020-03-02 to 2020-12-31
+  \end{itemize}
+  \end{block}
+\end{columns}
 
 \vspace{0.4em}
-\textbf{Forecast Error Variance Decomposition (FEVD):} breaks down the $h$-step forecast uncertainty of variable $i$ into contributions from each structural shock.
-\begin{itemize}
-  \item Answers: \textit{``What fraction of Japan's volatility forecast error is driven by US shocks?''}
-\end{itemize}
-
-\vspace{0.4em}
-\textbf{Generalised FEVD (GFEVD)} (Pesaran \& Shin 1998): same idea, but using generalised impulses -- \textbf{no ordering required}.
-\begin{itemize}
-  \item Robust to variable ordering; especially useful when no clear causal hierarchy exists across markets
-\end{itemize}
-
+\begin{alertblock}{Interpretation note}
+All results should be read as reduced-form, recursively identified volatility transmission patterns rather than structural causal effects.
+\end{alertblock}
 \end{frame}
 
-% ------ SLIDE 5: The BVAR R Package ------
-\begin{frame}{The BVAR R Package}
-
-\begin{columns}[T]
-  \column{0.52\textwidth}
-    \textbf{Core functions:}
-    \begin{enumerate}
-      \item \texttt{bv\_minnesota()} - specify prior
-      \item \texttt{bvar(data, lags = p, \ldots)} - estimate
-      \item \texttt{irf()} / \texttt{predict()} - analyse
-    \end{enumerate}
-
-    \vspace{0.5em}
-    \textbf{Conjugate Normal-Inverse-Wishart (NIW) setup} (multivariate generalization of the Normal-Inverse-Gamma prior):
-    \[
-      \bm{\beta}\mid\Sigma \sim \mathcal{N}(\bm{b},\, \Sigma \otimes \Omega)
-    \]
-    \[
-      \Sigma \sim \mathcal{IW}(\Psi, d)
-    \]
-    $\Rightarrow$ closed-form posteriors; MH only for $\bm{\gamma}$.
-
-  \column{0.44\textwidth}
-    \textbf{Features:}
-    \begin{itemize}
-      \item Recursive \& sign-restricted IRFs
-      \item Conditional forecasting (scenario analysis)
-      \item FRED-MD / FRED-QD datasets integration
-      \item \texttt{coda} interface for convergence diagnostics
-      \item \texttt{BVARverse} for \texttt{ggplot2} output
-    \end{itemize}
-\end{columns}
-
-\end{frame}
-
-%% ---------------------------------------------------------------
-\section{Our Project}
-%% ---------------------------------------------------------------
-
-% ------ SLIDE 7: Data & Research Question ------
-\begin{frame}{Our Project: Data \& Research Question}
-
-\textbf{Research question}: How do volatility shocks transmit across global markets, and does this transmission change during the COVID-19 crisis?
-
-\smallskip
-VAR and BVAR applications to macroeconomic and financial variables have proven to be useful tools for studying cross-market dynamics and shock transmission.
-
-\smallskip
-\textbf{Data}: daily implied volatility indices, 2015-2025 ($M = 6$, $p=5$): \textbf{186 parameters}
-
-\begin{columns}[T]
-  \column{0.54\textwidth}
-    \begin{center}
-    \small
-    \begin{tabular}{lll}
-      \toprule
-      Index & Market & Underlying \\
-      \midrule
-      VIX        & United States  & S\&P 500 \\
-      V2TX       & Euro Area      & EURO STOXX 50 \\
-      IVIUK      & United Kingdom & FTSE 100 \\
-      VNKY       & Japan          & Nikkei 225 \\
-      VHSI       & Hong Kong      & Hang Seng \\
-      India VIX  & India          & Nifty 50 \\
-      \bottomrule
-    \end{tabular}
-    \end{center}
-
-  \column{0.43\textwidth}
-    \vspace{0.5cm}
-    \textbf{Sub-sample comparison:}
-    \begin{itemize}
-      \item \textbf{Calm market}: 2015-2019\\(low global volatility)
-      \item \textbf{Crisis}: 2020-2021\\(COVID-19 shock)
-    \end{itemize}
-\end{columns}
-
-\end{frame}
-
-% ------ SLIDE 8: Methodology & Planned Outputs ------
-\begin{frame}{Our Project: Methodology \& Planned Outputs}
-
-\begin{columns}[T]
-  \column{0.50\textwidth}
-    \textbf{Model}: Hierarchical BVAR\\[0.2em]
-    \begin{itemize}
-      \item Minnesota prior with auto-tuned $\lambda$ (Giannone et al.\ 2015)
-      \item Implemented via \texttt{BVAR} R package
-      \item Estimated separately on calm and crisis sub-samples
-    \end{itemize}
-
-  \column{0.46\textwidth}
-    \textbf{Planned outputs:}\\[0.2em]
-    \begin{enumerate}
-      \item \textbf{IRFs} - 1 s.d.\ US VIX shock; response of all markets over 30-day horizon
-      \item \textbf{GFEVD} - share of each market's forecast variance explained by US shocks
-      \item \textbf{Sub-sample comparison} - do IRFs \& GFEVDs differ significantly between calm and COVID-19 crisis periods?
-    \end{enumerate}
-\end{columns}
-
-\end{frame}
-
-% ------ SLIDE 9: References ------
 \begin{frame}[allowframebreaks]{References}
 \scriptsize
 \begin{thebibliography}{99}
 
 \bibitem[Kuschnig \& Vashold, 2021]{Kuschnig2021}
 Kuschnig, N., \& Vashold, L. (2021).
-\newblock BVAR: Bayesian Vector Autoregressions with Hierarchical Prior Selection in R.
-\newblock \emph{Journal of Statistical Software}, 100(14), 1--27.
+\newblock \emph{BVAR: Bayesian Vector Autoregressions with Hierarchical Prior Selection in R}.
+\newblock Journal of Statistical Software, 100(14), 1--27.
 
 \bibitem[Giannone et al., 2015]{Giannone2015}
 Giannone, D., Lenza, M., \& Primiceri, G. E. (2015).
@@ -358,15 +687,31 @@ Giannone, D., Lenza, M., \& Primiceri, G. E. (2015).
 \bibitem[Litterman, 1980]{Litterman1980}
 Litterman, R. B. (1980).
 \newblock Techniques of forecasting using vector autoregressions.
-\newblock \emph{Working Paper 115}, Federal Reserve Bank of Minneapolis.
+\newblock Federal Reserve Bank of Minneapolis Working Paper 115.
+
+\bibitem[Doan et al., 1984]{Doan1984}
+Doan, T., Litterman, R., \& Sims, C. (1984).
+\newblock Forecasting and conditional projection using realistic prior distributions.
+\newblock \emph{Econometric Reviews}, 3(1), 1--100.
+
+\bibitem[Sims, 1993]{Sims1993}
+Sims, C. A. (1993).
+\newblock A nine-variable probabilistic macroeconomic forecasting model.
+\newblock In \emph{Business Cycles, Indicators and Forecasting}.
+
+\bibitem[Sims \& Zha, 1998]{Sims1998}
+Sims, C. A., \& Zha, T. (1998).
+\newblock Bayesian methods for dynamic multivariate models.
+\newblock \emph{International Economic Review}, 39(4), 949--968.
 
 \bibitem[Pesaran \& Shin, 1998]{Pesaran1998}
-Pesaran, H. H., \& Shin, Y. (1998).
+Pesaran, M. H., \& Shin, Y. (1998).
 \newblock Generalized impulse response analysis in linear multivariate models.
 \newblock \emph{Economics Letters}, 58(1), 17--29.
 
 \end{thebibliography}
 \end{frame}
+
 % ============================================================
 \end{document}
 % ============================================================

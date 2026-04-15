@@ -1,0 +1,37 @@
+\frametitle{\texttt {BVAR} Package Workflow}
+\scriptsize
+\begin{columns}[T,onlytextwidth]
+  \column{0.58\textwidth}
+\begin{lstlisting}[language=R,basicstyle=\ttfamily\tiny]
+mn <- bv_minnesota(
+  lambda = bv_lambda(mode = 0.2, sd = 0.4),
+  alpha  = bv_alpha(mode = 2),
+  psi    = bv_psi(scale = 0.004, shape = 0.004)
+)
+
+fit <- bvar(
+  data = data_full, lags = 5,
+  n_draw = 25000, n_burn = 10000,
+  priors = bv_priors(hyper = c("lambda", "alpha", "psi"), mn = mn),
+  irf = bv_irf(horizon = 20, fevd = TRUE, identification = TRUE),
+  fcast = bv_fcast(horizon = 20)
+)
+
+irf_full  <- irf(fit, horizon = 20, conf_bands = c(0.05, 0.16))
+fevd_full <- fevd(irf_full, conf_bands = c(0.16))
+pred_full <- predict(fit, conf_bands = c(0.05, 0.16))
+\end{lstlisting}
+
+  \column{0.38\textwidth}
+  \begin{block}{What this workflow gives us}
+  \begin{itemize}
+    \item One object for estimation, diagnostics, and post-estimation
+    \item Built-in IRFs and FEVDs
+    \item Conditional forecasts for stress scenarios
+  \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Why this matters}
+  The package makes the full Bayesian workflow transparent enough for teaching and compact enough for applied work.
+  \end{alertblock}
+\end{columns}
