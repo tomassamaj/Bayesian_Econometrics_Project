@@ -17,7 +17,7 @@ library(coda)       # MCMC diagnostics
 set.seed(42)
 
 # Output directory for all saved plots
-dir.create("plots old", showWarnings = FALSE)
+dir.create("plots minnesota only", showWarnings = FALSE)
 
 # Clean labels for all six volatility indices
 series_labels <- c(
@@ -32,7 +32,7 @@ series_labels <- c(
 # Helper: save a ggplot or patchwork object to the plots/ directory
 save_gg <- function(p, filename, width = 12, height = 7) {
   ggsave(
-    file.path("plots old", filename),
+    file.path("plots minnesota only", filename),
     plot = p,
     width = width,
     height = height,
@@ -45,7 +45,7 @@ save_gg <- function(p, filename, width = 12, height = 7) {
 # Helper: save a base-R plot to the plots/ directory
 save_base_plot <- function(filename, expr, width = 12, height = 7, res = 150) {
   png(
-    file.path("plots old", filename),
+    file.path("plots minnesota only", filename),
     width = width * res,
     height = height * res,
     res = res
@@ -643,7 +643,7 @@ hyper_diag_full <- summarise_hyper_diagnostics(bvar_full$hyper)
 print(hyper_diag_full)
 write.csv(
   hyper_diag_full,
-  file.path("plots old", "03_hyperparameter_diagnostics.csv"),
+  file.path("plots minnesota only", "03_hyperparameter_diagnostics.csv"),
   row.names = FALSE
 )
 
@@ -899,7 +899,7 @@ names(scenario_results) <- var_names
 scenario_paths <- bind_rows(lapply(scenario_results, `[[`, "path_df"))
 write.csv(
   scenario_paths,
-  file.path("plots old", "05_conditional_scenario_paths.csv"),
+  file.path("plots minnesota only", "05_conditional_scenario_paths.csv"),
   row.names = FALSE
 )
 
