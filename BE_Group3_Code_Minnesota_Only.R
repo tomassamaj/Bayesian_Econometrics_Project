@@ -726,7 +726,7 @@ p_irf_full_vix <- plot_irf_facets(
   title = "IRF: Response to a 1 SD VIX Shock - Full Sample",
   subtitle = paste(
     "Sample:", full_sample_label,
-    "| 68% and 90% posterior credible bands | Cholesky identification"
+    "| 68% and 90% posterior credible bands"
   )
 )
 
